@@ -8,10 +8,19 @@
     <style>
         :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
         body { background: #f0f2f5; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-        #ludo-board { display: grid; grid-template-columns: repeat(15, 1fr); width: 92vw; height: 92vw; max-width: 400px; margin: auto; border: 5px solid #333; background: #fff; }
-        .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
+        #ludo-board { 
+            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
+            width: 94vw; height: 94vw; max-width: 420px; max-height: 420px; 
+            margin: auto; background: #fff; border: 4px solid #333; border-radius: 8px; overflow: hidden;
+        }
+        .cell { border: 0.1px solid #ddd; position: relative; display: flex; align-items: center; justify-content: center; }
         .red { background-color: var(--red); } .green { background-color: var(--green); }
         .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
+        .piece { width: 70%; height: 70%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; }
+        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); }
+        .p-green { background: radial-gradient(circle, #58d68d, #1d8348); }
+        .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); }
+        .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
     </style>
 </head>
@@ -27,12 +36,12 @@
 
     <!-- Play Tab -->
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
-        <div id="ludo-board" class="mt-4 shadow-xl"></div>
+        <div id="ludo-board" class="mt-4 shadow-xl border-4 border-white"></div>
         <div class="mt-6 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-2">
-            <button onclick="rollDice()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-3xl">🎲</button>
+            <button onclick="rollDice()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-3xl flex items-center justify-center">🎲</button>
             <div class="text-center">
-                <p class="text-[8px] text-gray-400">ID: <span id="display-id" class="font-bold text-blue-600">...</span></p>
-                <button onclick="loadBalance()" class="text-[9px] bg-blue-100 px-2 py-1 rounded mt-1">🔄 Refresh</button>
+                <p class="text-[8px] text-gray-400">ID: <span id="display-id" class="font-bold text-blue-600">SHAHIN_PRO_USER_1</span></p>
+                <button onclick="loadBalance()" class="text-[9px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full mt-1 font-bold">🔄 Refresh</button>
             </div>
         </div>
     </div>
@@ -41,13 +50,13 @@
     <div id="wallet-tab" class="tab-content p-4 space-y-4">
         <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500">
             <div class="bg-pink-50 p-4 rounded-xl text-center mb-5 border border-pink-100">
-                <p class="text-[10px] text-pink-600 font-bold uppercase">Send Money (bKash):</p>
-                <p id="display-bikash" class="font-black text-xl text-pink-700 tracking-wider">Loading...</p>
-                <button onclick="copyText('display-bikash')" class="bg-pink-600 text-white px-4 py-1 rounded-full text-[10px] mt-2 font-bold">COPY NUMBER</button>
+                <p class="text-[10px] text-pink-600 font-bold uppercase italic">Send Money to bKash (Personal):</p>
+                <p id="display-bikash" class="font-black text-xl text-pink-700 tracking-widest uppercase">Loading...</p>
+                <button onclick="copyText('display-bikash')" class="bg-pink-600 text-white px-4 py-1 rounded-full text-[10px] mt-2 font-bold shadow-md uppercase">Copy Number</button>
             </div>
             <input type="number" id="dep-amount" placeholder="Amount (৳)" class="w-full border p-4 rounded-2xl mb-3 outline-none">
-            <input type="text" id="dep-trx" placeholder="TrxID" class="w-full border p-4 rounded-2xl mb-5 outline-none">
-            <button onclick="handleMoney('deposit')" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold uppercase shadow-lg">Submit Request</button>
+            <input type="text" id="dep-trx" placeholder="Transaction ID (TrxID)" class="w-full border p-4 rounded-2xl mb-5 outline-none">
+            <button onclick="handleMoney('deposit')" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold uppercase shadow-lg shadow-pink-200 active:scale-95 transition">Submit Request</button>
         </div>
     </div>
 
@@ -56,8 +65,9 @@
         <div class="bg-gray-900 text-white p-5 rounded-3xl mb-6 shadow-xl">
             <h3 class="text-xs text-yellow-400 mb-4 uppercase font-bold">Admin Settings</h3>
             <input type="text" id="admin-bikash-input" placeholder="Update bKash" class="bg-gray-800 p-3 rounded-xl w-full mb-3 text-sm text-white outline-none">
-            <button onclick="updateSettings()" class="w-full bg-yellow-500 text-black py-3 rounded-xl font-black uppercase text-xs">Save</button>
+            <button onclick="updateSettings()" class="w-full bg-yellow-500 text-black py-3 rounded-xl font-black uppercase text-xs">Save Settings</button>
         </div>
+        <h4 class="font-bold text-gray-700 mb-3 px-2">Requests:</h4>
         <div id="admin-list" class="space-y-4"></div>
     </div>
 
@@ -65,15 +75,38 @@
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
         <button onclick="showTab('game-tab')" class="flex flex-col items-center"><span class="text-xl">🎮</span><span class="text-[9px]">PLAY</span></button>
         <button onclick="showTab('wallet-tab')" class="flex flex-col items-center"><span class="text-xl">💰</span><span class="text-[9px]">WALLET</span></button>
-        <button onclick="showTab('admin-tab')" class="flex flex-col items-center"><span class="text-xl">⚙️</span><span class="text-[9px]">ADMIN</span></button>
+        <button onclick="showTab('admin-tab')" class="flex flex-col items-center text-gray-400"><span class="text-xl">⚙️</span><span class="text-[9px]">ADMIN</span></button>
     </div>
 
     <script>
-        // আপনার আইডি ফিক্সড করার জন্য এটি ব্যবহার করুন
-        const userId = "SHAHIN_PRO_USER_1"; // আপনার টেস্টের জন্য আইডিটি ফিক্সড করে দিলাম
-        document.getElementById('display-id').innerText = userId;
-
+        const userId = "SHAHIN_PRO_USER_1"; 
         let isAdminAuthenticated = false;
+
+        // এই ফাংশনটি লুডু বোর্ড তৈরি করবে
+        function createBoard() {
+            const b = document.getElementById('ludo-board');
+            if(!b) return;
+            b.innerHTML = "";
+            for(let i=0; i<225; i++) {
+                let r=Math.floor(i/15), c=i%15, d=document.createElement('div'); 
+                d.className='cell'; d.id = `c-${r}-${c}`;
+                if(r<6&&c<6) d.classList.add('red');
+                else if(r<6&&c>8) d.classList.add('green');
+                else if(r>8&&c<6) d.classList.add('yellow');
+                else if(r>8&&c>8) d.classList.add('blue');
+                b.appendChild(d);
+            }
+            const addP = (r,c,cl) => { 
+                const p=document.createElement('div'); 
+                p.className=`piece p-${cl}`; 
+                const target = document.getElementById(`c-${r}-${c}`);
+                if(target) target.appendChild(p);
+            };
+            addP(1,1,'red'); addP(1,4,'red'); addP(4,1,'red'); addP(4,4,'red');
+            addP(1,10,'green'); addP(1,13,'green'); addP(4,10,'green'); addP(4,13,'green');
+            addP(10,1,'yellow'); addP(10,4,'yellow'); addP(13,1,'yellow'); addP(13,4,'yellow');
+            addP(10,10,'blue'); addP(10,13,'blue'); addP(13,10,'blue'); addP(13,13,'blue');
+        }
 
         async function loadBalance() {
             try {
@@ -84,12 +117,14 @@
         }
 
         async function init() {
-            loadBalance();
+            createBoard();
+            await loadBalance();
             try {
                 const res = await fetch('/api/wallet?type=settings');
                 const data = await res.json();
                 document.getElementById('display-bikash').innerText = data.bikash || "017XXXXXXXX";
                 document.getElementById('admin-bikash-input').value = data.bikash || "";
+                document.getElementById('display-id').innerText = userId;
             } catch(e) { }
         }
 
@@ -102,39 +137,38 @@
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ type: 'deposit', userId: userId, amount, trxId }) 
             });
-            alert("Request Sent!");
+            alert("অনুরোধ পাঠানো হয়েছে!");
             document.getElementById('dep-amount').value = "";
             document.getElementById('dep-trx').value = "";
         }
 
         async function loadAdmin() {
-            const res = await fetch('/api/wallet?admin=true');
-            const list = await res.json();
-            const div = document.getElementById('admin-list');
-            div.innerHTML = list.length === 0 ? "<p class='text-center text-gray-400 py-10'>No requests</p>" : 
-            list.map(r => `
-                <div class="bg-white p-4 rounded-2xl shadow flex justify-between items-center border-l-4 border-green-500">
-                    <div>
-                        <p class="font-black text-gray-800">৳${r.amount}</p>
-                        <p class="text-[9px] text-blue-600 font-bold">${r.userId}</p>
-                        <p class="text-[9px] text-gray-400 font-mono">${r.trxId || 'N/A'}</p>
+            try {
+                const res = await fetch('/api/wallet?admin=true');
+                const list = await res.json();
+                const div = document.getElementById('admin-list');
+                div.innerHTML = list.length === 0 ? "<p class='text-center text-gray-400 py-10'>সব ক্লিয়ার!</p>" : 
+                list.map(r => `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center mb-3">
+                        <div>
+                            <p class="font-black text-gray-800">৳${r.amount}</p>
+                            <p class="text-[9px] text-blue-600 font-bold uppercase">${r.userId}</p>
+                        </div>
+                        <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount})" class="bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold">Approve</button>
                     </div>
-                    <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount})" class="bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold">Approve</button>
-                </div>
-            `).join('');
+                `).join('');
+            } catch(e) { }
         }
 
         async function adminAction(id, uId, amt) {
-            const res = await fetch('/api/wallet', { 
+            await fetch('/api/wallet', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ action: 'approve', id, userId: uId, amount: amt }) 
             });
-            if(res.ok) {
-                alert("Approved Successfully!");
-                loadAdmin(); 
-                setTimeout(loadBalance, 500); // ডাটাবেস আপডেট হতে একটু সময় দিতে ৫০০০ মিলিসেকেন্ড পর রিফ্রেশ
-            }
+            alert("Approved!");
+            loadAdmin(); 
+            setTimeout(loadBalance, 1000); // ১ সেকেন্ড পর ব্যালেন্স চেক করবে
         }
 
         async function updateSettings() {
@@ -157,14 +191,14 @@
             if(id === 'game-tab') loadBalance();
         }
 
-        function copyText(id) { 
-            const n = document.getElementById(id).innerText; 
-            navigator.clipboard.writeText(n); alert("Copied!"); 
-        }
-
         function rollDice() {
             const v = Math.floor(Math.random() * 6) + 1;
             document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v];
+        }
+
+        function copyText(id) { 
+            const n = document.getElementById(id).innerText; 
+            navigator.clipboard.writeText(n); alert("Copied!"); 
         }
 
         init();
