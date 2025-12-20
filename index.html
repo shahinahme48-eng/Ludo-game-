@@ -3,63 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Cash Online</title>
+    <title>Ludo Cash - Advanced Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root { --red: #ff4d4d; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
-        #ludo-board { display: grid; grid-template-columns: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 400px; max-height: 400px; border: 4px solid #333; margin: auto; }
-        .cell { border: 1px solid #eee; background: white; }
-        .red { background-color: var(--red); } .green { background-color: var(--green); }
-        .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        .tab-content { display: none; } .active-tab { display: block; }
-    </style>
 </head>
-<body class="bg-gray-100 pb-20">
-    <div class="bg-blue-700 text-white p-4 flex justify-between shadow-lg">
-        <h1 class="font-bold uppercase tracking-wider text-sm">Ludo Win Pro</h1>
-        <div class="text-right"><p class="text-[10px]">ব্যালেন্স</p><p class="font-bold text-yellow-400">৳ <span id="balance">0</span></p></div>
+<body class="bg-gray-50 pb-20">
+    <!-- TOP BAR -->
+    <div class="bg-blue-600 text-white p-4 flex justify-between shadow-lg sticky top-0 z-50">
+        <h1 class="font-bold">LUDO PRO</h1>
+        <div class="text-right">
+            <p class="text-[10px]">ব্যালেন্স</p>
+            <p class="font-bold">৳ <span id="balance">0</span></p>
+        </div>
     </div>
 
-    <!-- PLAY TAB -->
-    <div id="game-tab" class="tab-content active-tab p-4 text-center">
-        <div id="ludo-board" class="shadow-xl bg-white mb-6 border-8 border-white rounded-lg"></div>
-        <button onclick="rollDice()" class="bg-blue-600 text-white px-10 py-3 rounded-full font-bold text-2xl shadow-lg active:scale-95 transition">🎲 <span id="dice-val">?</span></button>
+    <!-- TABS CONTAINER -->
+    <div id="game-tab" class="tab-content block p-4">
+        <div class="bg-white p-10 rounded-xl shadow text-center">গেম বোর্ড এখানে আসবে...</div>
     </div>
 
     <!-- WALLET TAB -->
-    <div id="wallet-tab" class="tab-content p-4">
-        <div class="bg-white p-5 rounded-2xl shadow-xl border border-gray-100">
-            <h2 class="font-bold mb-4 text-center text-gray-700">টাকা জমা দিন (Deposit)</h2>
-            <div class="bg-pink-100 p-4 rounded-xl mb-4 text-center border-2 border-dashed border-pink-300">
-                <p class="text-xs text-pink-600 mb-1 font-bold">নিচের নাম্বারে সেন্ড মানি করুন:</p>
-                <!-- নিজের বিকাশ নাম্বার এখানে দিন -->
-                <p class="font-black text-2xl text-pink-700">017XXXXXXXX</p> 
+    <div id="wallet-tab" class="tab-content hidden p-4">
+        <div class="space-y-4">
+            <!-- Deposit Section -->
+            <div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-pink-500">
+                <h3 class="font-bold text-pink-600 mb-2">টাকা জমা দিন (Deposit)</h3>
+                <div class="bg-gray-100 p-3 rounded mb-3 text-center">
+                    <p class="text-xs">বিকাশ পার্সোনাল নাম্বার:</p>
+                    <p id="display-bikash" class="font-bold text-lg">Loading...</p>
+                </div>
+                <input type="number" id="dep-amount" placeholder="পরিমাণ" class="w-full border p-2 rounded mb-2">
+                <input type="text" id="dep-trx" placeholder="TrxID" class="w-full border p-2 rounded mb-2">
+                <button onclick="handleMoney('deposit')" class="w-full bg-pink-600 text-white py-2 rounded font-bold">ডিপোজিট রিকোয়েস্ট</button>
             </div>
-            <input type="number" id="dep-amount" placeholder="টাকার পরিমাণ লিখুন" class="w-full border p-3 rounded-lg mb-2 focus:ring-2 focus:ring-pink-500 outline-none">
-            <input type="text" id="dep-trx" placeholder="Transaction ID (TrxID)" class="w-full border p-3 rounded-lg mb-4 focus:ring-2 focus:ring-pink-500 outline-none">
-            <button onclick="submitDeposit()" class="w-full bg-pink-600 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-pink-700 active:scale-95 transition">রিকোয়েস্ট পাঠান</button>
+
+            <!-- Withdraw Section -->
+            <div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-blue-500">
+                <h3 class="font-bold text-blue-600 mb-2">টাকা তুলুন (Withdraw)</h3>
+                <input type="number" id="wit-amount" placeholder="পরিমাণ" class="w-full border p-2 rounded mb-2">
+                <input type="text" id="wit-phone" placeholder="বিকাশ নাম্বার (যেখানে টাকা নিবেন)" class="w-full border p-2 rounded mb-2">
+                <button onclick="handleMoney('withdraw')" class="w-full bg-blue-600 text-white py-2 rounded font-bold">উইথড্র রিকোয়েস্ট</button>
+            </div>
         </div>
     </div>
 
     <!-- ADMIN TAB -->
-    <div id="admin-tab" class="tab-content p-4">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="font-bold text-red-600 uppercase">পেন্ডিং পেমেন্ট লিস্ট</h2>
-            <button onclick="logoutAdmin()" class="text-xs bg-gray-200 px-2 py-1 rounded">Logout</button>
+    <div id="admin-tab" class="tab-content hidden p-4">
+        <!-- Settings -->
+        <div class="bg-black text-white p-4 rounded-xl mb-6">
+            <h3 class="text-sm font-bold mb-2">সেটিংস (বিকাশ নাম্বার সেট করুন)</h3>
+            <div class="flex gap-2">
+                <input type="text" id="admin-bikash-input" class="text-black p-2 rounded flex-1" placeholder="New bKash Number">
+                <button onclick="updateSettings()" class="bg-yellow-500 text-black px-4 py-2 rounded font-bold">Update</button>
+            </div>
         </div>
+
+        <h3 class="font-bold mb-4 text-red-600">পেন্ডিং রিকোয়েস্ট লিস্ট:</h3>
         <div id="admin-list" class="space-y-3"></div>
     </div>
 
-    <!-- NAV BAR -->
-    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-50">
-        <button onclick="showTab('game-tab')" class="flex flex-col items-center text-blue-600 font-bold"><span class="text-xl">🎮</span><span class="text-[10px]">PLAY</span></button>
-        <button onclick="showTab('wallet-tab')" class="flex flex-col items-center text-gray-500 font-bold"><span class="text-xl">💰</span><span class="text-[10px]">WALLET</span></button>
-        <button onclick="showTab('admin-tab')" class="flex flex-col items-center text-gray-400 font-bold"><span class="text-xl">⚙️</span><span class="text-[10px]">ADMIN</span></button>
+    <!-- FOOTER NAV -->
+    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-3 shadow-lg">
+        <button onclick="showTab('game-tab')">Play</button>
+        <button onclick="showTab('wallet-tab')">Wallet</button>
+        <button onclick="showTab('admin-tab')">Admin</button>
     </div>
 
     <script>
-        const userId = "shahin_user_1"; // প্রতি ইউজারের জন্য আলাদা আইডি হতে পারে
-        let isAdminAuthenticated = false;
+        const userId = "shahin_user_1";
+        let isAdmin = false;
+
+        // গেম লোড হলে ডাটা আনা
+        async function init() {
+            loadBalance();
+            const res = await fetch('/api/wallet?type=settings');
+            const data = await res.json();
+            document.getElementById('display-bikash').innerText = data.bikash;
+            document.getElementById('admin-bikash-input').value = data.bikash;
+        }
 
         async function loadBalance() {
             const res = await fetch(`/api/wallet?userId=${userId}`);
@@ -67,82 +87,77 @@
             document.getElementById('balance').innerText = data.balance || 0;
         }
 
-        async function submitDeposit() {
-            const amount = document.getElementById('dep-amount').value;
+        async function handleMoney(type) {
+            const amount = document.getElementById(type === 'deposit' ? 'dep-amount' : 'wit-amount').value;
             const trxId = document.getElementById('dep-trx').value;
-            if(!amount || !trxId) return alert("সব তথ্য সঠিকভাবে দিন!");
+            const phone = document.getElementById('wit-phone').value;
+
+            if(!amount) return alert("পরিমাণ লিখুন");
+
+            const res = await fetch('/api/wallet', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ type, userId, amount, trxId, phone })
+            });
             
+            if(res.ok) {
+                alert("রিকোয়েস্ট সফল হয়েছে!");
+                loadBalance();
+            } else {
+                alert("ব্যালেন্স কম অথবা সমস্যা হয়েছে।");
+            }
+        }
+
+        async function updateSettings() {
+            const num = document.getElementById('admin-bikash-input').value;
             await fetch('/api/wallet', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ type: 'deposit', userId, amount, trxId })
+                body: JSON.stringify({ type: 'updateSettings', bikash: num })
             });
-            alert("রিকোয়েস্ট পাঠানো হয়েছে! অ্যাডমিন চেক করে ব্যালেন্স যোগ করে দিবে।");
-            document.getElementById('dep-amount').value = '';
-            document.getElementById('dep-trx').value = '';
+            alert("নাম্বার আপডেট হয়েছে!");
+            init();
         }
 
         async function loadAdmin() {
             const res = await fetch('/api/wallet?admin=true');
             const list = await res.json();
             const div = document.getElementById('admin-list');
-            if(list.length === 0) div.innerHTML = "<p class='text-center text-gray-400 mt-10'>কোন রিকোয়েস্ট নেই</p>";
-            else {
-                div.innerHTML = list.map(r => `
-                    <div class="bg-white p-4 shadow-md rounded-xl flex justify-between items-center border-l-4 border-green-500">
-                        <div><p class="font-bold text-lg text-gray-800">৳${r.amount}</p><p class="text-xs text-blue-500 font-mono">${r.trxId}</p></div>
-                        <button onclick="approve('${r._id}', '${r.userId}', ${r.amount})" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md active:scale-90 transition">Approve</button>
+            div.innerHTML = list.map(r => `
+                <div class="bg-white p-3 rounded shadow border-l-4 ${r.type==='deposit'?'border-pink-500':'border-blue-500'}">
+                    <p class="text-xs font-bold text-gray-400 uppercase">${r.type}</p>
+                    <p class="font-bold">৳${r.amount} (${r.userId})</p>
+                    <p class="text-[10px] text-gray-500">TrxID/Phone: ${r.type==='deposit'?r.trxId:r.phone}</p>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount}, 'approve', '${r.type}')" class="bg-green-600 text-white px-3 py-1 rounded text-xs">Approve</button>
+                        <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount}, 'reject', '${r.type}')" class="bg-red-600 text-white px-3 py-1 rounded text-xs">Cancel/Reject</button>
                     </div>
-                `).join('');
-            }
+                </div>
+            `).join('');
         }
 
-        async function approve(id, uId, amt) {
+        async function adminAction(id, userId, amount, action, type) {
             await fetch('/api/wallet', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ type: 'approve', id, userId: uId, amount: amt })
+                body: JSON.stringify({ action, id, userId, amount, type })
             });
-            loadAdmin(); loadBalance();
-        }
-
-        function logoutAdmin() {
-            isAdminAuthenticated = false;
-            showTab('game-tab');
+            loadAdmin();
+            loadBalance();
         }
 
         function showTab(id) {
-            if (id === 'admin-tab' && !isAdminAuthenticated) {
-                // অ্যাডমিন পাসওয়ার্ড চেক
-                let pin = prompt("অ্যাডমিন পিন কোড দিন (Admin Security PIN):");
-                if (pin === "2025") { // এখানে আপনার নিজের পাসওয়ার্ড দিন
-                    isAdminAuthenticated = true;
-                } else {
-                    alert("ভুল পাসওয়ার্ড! আপনি অ্যাডমিন নন।");
-                    return;
-                }
+            if(id === 'admin-tab' && !isAdmin) {
+                const pin = prompt("Admin Pin:");
+                if(pin === "2025") isAdmin = true;
+                else return;
             }
-            
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
-            document.getElementById(id).classList.add('active-tab');
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
             if(id === 'admin-tab') loadAdmin();
-            if(id === 'game-tab') loadBalance();
         }
 
-        // বোর্ড তৈরি
-        const board = document.getElementById('ludo-board');
-        for (let i = 0; i < 225; i++) {
-            let row = Math.floor(i / 15), col = i % 15;
-            let d = document.createElement('div'); d.className = 'cell';
-            if(row < 6 && col < 6) d.classList.add('red');
-            else if(row < 6 && col > 8) d.classList.add('green');
-            else if(row > 8 && col < 6) d.classList.add('yellow');
-            else if(row > 8 && col > 8) d.classList.add('blue');
-            board.appendChild(d);
-        }
-
-        loadBalance();
-        function rollDice() { document.getElementById('dice-val').innerText = Math.floor(Math.random() * 6) + 1; }
+        init();
     </script>
 </body>
 </html>
