@@ -31,7 +31,14 @@ export default async function handler(req, res) {
             return res.json({ balance: user ? user.balance : 0 });
         }
         if (req.method === 'POST' && req.body.type === 'deposit') {
-            await transactions.insertOne({ userId: req.body.userId, amount: parseInt(req.body.amount), trxId: req.body.trxId, status: 'pending', type: 'deposit', date: new Date() });
+            await transactions.insertOne({ 
+                userId: req.body.userId, 
+                amount: parseInt(req.body.amount), 
+                trxId: req.body.trxId, 
+                status: 'pending', 
+                type: 'deposit', 
+                date: new Date() 
+            });
             return res.json({ success: true });
         }
         if (req.method === 'GET' && req.query.admin === 'true') {
@@ -39,10 +46,20 @@ export default async function handler(req, res) {
             return res.json(list);
         }
         if (req.method === 'POST' && req.body.action === 'approve') {
-            const { id, userId, amount } = req.body;
+            const { id } = req.body;
+            // প্রথমে রিকোয়েস্টটি খুঁজে বের করা
+            const request = await transactions.findOne({ _id: new ObjectId(id) });
+            if (!request) return res.status(404).json({ error: "Not found" });
+
+            // রিকোয়েস্ট অ্যাপ্রুভ করা
             await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: 'approved' } });
-            // ব্যালেন্স আপডেট লজিক
-            await users.updateOne({ userId: userId }, { $inc: { balance: parseInt(amount) } }, { upsert: true });
+            
+            // রিকোয়েস্টের ভেতরে থাকা UserId তে টাকা যোগ করা
+            await users.updateOne(
+                { userId: request.userId }, 
+                { $inc: { balance: parseInt(request.amount) } }, 
+                { upsert: true }
+            );
             return res.json({ success: true });
         }
     } catch (e) {
