@@ -3,120 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Cash - Advanced Admin</title>
+    <title>Ludo Cash Royal - Refer & Earn</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
+        body { background: #f0f2f5; font-family: sans-serif; }
+        .tab-content { display: none; } .active-tab { display: block; }
+        #ludo-board { display: grid; grid-template-columns: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 450px; margin: auto; border: 6px solid #333; background: #fff; }
+        .cell { border: 0.1px solid #ddd; }
+        .red { background-color: var(--red); } .green { background-color: var(--green); }
+        .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
+    </style>
 </head>
-<body class="bg-gray-50 pb-20">
-    <!-- TOP BAR -->
-    <div class="bg-blue-600 text-white p-4 flex justify-between shadow-lg sticky top-0 z-50">
-        <h1 class="font-bold">LUDO PRO</h1>
-        <div class="text-right">
-            <p class="text-[10px]">ব্যালেন্স</p>
-            <p class="font-bold">৳ <span id="balance">0</span></p>
+<body class="pb-24">
+
+    <!-- Top Bar -->
+    <div class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg">
+        <h1 class="font-bold italic">LUDO ROYAL</h1>
+        <div class="text-right"><p class="text-[9px]">ব্যালেন্স</p><p class="font-bold text-yellow-300">৳ <span id="balance">0</span></p></div>
+    </div>
+
+    <!-- Play Tab -->
+    <div id="game-tab" class="tab-content active-tab p-2 text-center">
+        <div id="ludo-board" class="mt-4"></div>
+        <button onclick="rollDice()" class="mt-8 bg-blue-600 text-white w-20 h-20 rounded-2xl shadow-xl text-3xl">🎲</button>
+    </div>
+
+    <!-- Wallet Tab -->
+    <div id="wallet-tab" class="tab-content hidden p-4 space-y-4">
+        
+        <!-- Refer & Earn Section -->
+        <div class="bg-gradient-to-br from-yellow-400 to-orange-500 p-5 rounded-3xl text-white shadow-lg">
+            <h3 class="font-black text-lg">🎁 Refer & Earn</h3>
+            <p class="text-[10px] opacity-90 mb-3">বন্ধুদের ইনভাইট করে জিতে নিন বোনাস!</p>
+            <div class="bg-white/20 p-3 rounded-xl flex justify-between items-center mb-4 border border-white/30">
+                <div><p class="text-[9px] uppercase">আপনার রেফার কোড:</p><p id="my-refer-code" class="font-bold text-xl">Loading...</p></div>
+                <button onclick="copyRefer()" class="bg-white text-orange-600 px-4 py-2 rounded-lg font-bold text-xs shadow-sm">Share</button>
+            </div>
+            <div id="refer-input-area" class="flex gap-2">
+                <input type="text" id="input-refer-code" placeholder="বন্ধুর কোড দিন" class="flex-1 p-3 rounded-xl text-black outline-none text-sm">
+                <button onclick="claimRefer()" class="bg-black text-white px-5 rounded-xl font-bold text-xs">Claim</button>
+            </div>
+            <p id="claimed-msg" class="hidden text-center text-xs font-bold mt-2">✅ বোনাস নেওয়া হয়েছে!</p>
+        </div>
+
+        <!-- Deposit Section -->
+        <div class="bg-white p-5 rounded-3xl shadow-md border-t-8 border-pink-500">
+            <p class="text-xs text-gray-400 font-bold mb-2">টাকা জমা দিন (Deposit)</p>
+            <div class="bg-pink-50 p-3 rounded-xl text-center mb-3">
+                <p id="display-bikash" class="font-black text-xl text-pink-700">Loading...</p>
+                <button onclick="navigator.clipboard.writeText(document.getElementById('display-bikash').innerText); alert('Copied!')" class="text-[10px] text-pink-500">Copy Number</button>
+            </div>
+            <input type="number" id="dep-amount" placeholder="Amount" class="w-full border p-3 rounded-xl mb-2">
+            <input type="text" id="dep-trx" placeholder="TrxID" class="w-full border p-3 rounded-xl mb-4">
+            <button onclick="handleMoney('deposit')" class="w-full bg-pink-600 text-white py-3 rounded-xl font-bold">ডিপোজিট রিকোয়েস্ট</button>
         </div>
     </div>
 
-    <!-- TABS CONTAINER -->
-    <div id="game-tab" class="tab-content block p-4">
-        <div class="bg-white p-10 rounded-xl shadow text-center">গেম বোর্ড এখানে আসবে...</div>
-    </div>
-
-    <!-- WALLET TAB -->
-    <div id="wallet-tab" class="tab-content hidden p-4">
-        <div class="space-y-4">
-            <!-- Deposit Section -->
-            <div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-pink-500">
-                <h3 class="font-bold text-pink-600 mb-2">টাকা জমা দিন (Deposit)</h3>
-                <div class="bg-gray-100 p-3 rounded mb-3 text-center">
-                    <p class="text-xs">বিকাশ পার্সোনাল নাম্বার:</p>
-                    <p id="display-bikash" class="font-bold text-lg">Loading...</p>
-                </div>
-                <input type="number" id="dep-amount" placeholder="পরিমাণ" class="w-full border p-2 rounded mb-2">
-                <input type="text" id="dep-trx" placeholder="TrxID" class="w-full border p-2 rounded mb-2">
-                <button onclick="handleMoney('deposit')" class="w-full bg-pink-600 text-white py-2 rounded font-bold">ডিপোজিট রিকোয়েস্ট</button>
-            </div>
-
-            <!-- Withdraw Section -->
-            <div class="bg-white p-4 rounded-xl shadow-md border-t-4 border-blue-500">
-                <h3 class="font-bold text-blue-600 mb-2">টাকা তুলুন (Withdraw)</h3>
-                <input type="number" id="wit-amount" placeholder="পরিমাণ" class="w-full border p-2 rounded mb-2">
-                <input type="text" id="wit-phone" placeholder="বিকাশ নাম্বার (যেখানে টাকা নিবেন)" class="w-full border p-2 rounded mb-2">
-                <button onclick="handleMoney('withdraw')" class="w-full bg-blue-600 text-white py-2 rounded font-bold">উইথড্র রিকোয়েস্ট</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ADMIN TAB -->
+    <!-- Admin Tab -->
     <div id="admin-tab" class="tab-content hidden p-4">
-        <!-- Settings -->
-        <div class="bg-black text-white p-4 rounded-xl mb-6">
-            <h3 class="text-sm font-bold mb-2">সেটিংস (বিকাশ নাম্বার সেট করুন)</h3>
-            <div class="flex gap-2">
-                <input type="text" id="admin-bikash-input" class="text-black p-2 rounded flex-1" placeholder="New bKash Number">
-                <button onclick="updateSettings()" class="bg-yellow-500 text-black px-4 py-2 rounded font-bold">Update</button>
-            </div>
+        <div class="bg-gray-900 text-white p-5 rounded-3xl mb-4 shadow-xl">
+            <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase">অ্যাডমিন কন্ট্রোল</h3>
+            <label class="text-[9px]">বিকাশ নাম্বার:</label>
+            <input type="text" id="admin-bikash-input" class="bg-gray-800 p-2 rounded w-full mb-2 text-sm">
+            <label class="text-[9px]">রেফার বোনাস (৳):</label>
+            <input type="number" id="admin-bonus-input" class="bg-gray-800 p-2 rounded w-full mb-4 text-sm">
+            <button onclick="updateSettings()" class="w-full bg-yellow-500 text-black py-2 rounded font-bold">সেভ সেটিংস</button>
         </div>
-
-        <h3 class="font-bold mb-4 text-red-600">পেন্ডিং রিকোয়েস্ট লিস্ট:</h3>
         <div id="admin-list" class="space-y-3"></div>
     </div>
 
-    <!-- FOOTER NAV -->
-    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-3 shadow-lg">
-        <button onclick="showTab('game-tab')">Play</button>
-        <button onclick="showTab('wallet-tab')">Wallet</button>
-        <button onclick="showTab('admin-tab')">Admin</button>
+    <!-- Nav Bar -->
+    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
+        <button onclick="showTab('game-tab')" class="text-xs font-bold text-blue-600">GAME</button>
+        <button onclick="showTab('wallet-tab')" class="text-xs font-bold text-gray-500">WALLET</button>
+        <button onclick="showTab('admin-tab')" class="text-xs font-bold text-gray-400">ADMIN</button>
     </div>
 
     <script>
-        const userId = "shahin_user_1";
+        const userId = "PL" + Math.floor(1000 + Math.random() * 9000); // সিম্পল আইডি
         let isAdmin = false;
 
-        // গেম লোড হলে ডাটা আনা
         async function init() {
             loadBalance();
+            document.getElementById('my-refer-code').innerText = userId;
             const res = await fetch('/api/wallet?type=settings');
             const data = await res.json();
-            document.getElementById('display-bikash').innerText = data.bikash;
-            document.getElementById('admin-bikash-input').value = data.bikash;
+            document.getElementById('display-bikash').innerText = data.bikash || "017XXXXXXXX";
+            document.getElementById('admin-bikash-input').value = data.bikash || "";
+            document.getElementById('admin-bonus-input').value = data.referBonus || 10;
         }
 
         async function loadBalance() {
             const res = await fetch(`/api/wallet?userId=${userId}`);
             const data = await res.json();
             document.getElementById('balance').innerText = data.balance || 0;
-        }
-
-        async function handleMoney(type) {
-            const amount = document.getElementById(type === 'deposit' ? 'dep-amount' : 'wit-amount').value;
-            const trxId = document.getElementById('dep-trx').value;
-            const phone = document.getElementById('wit-phone').value;
-
-            if(!amount) return alert("পরিমাণ লিখুন");
-
-            const res = await fetch('/api/wallet', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ type, userId, amount, trxId, phone })
-            });
-            
-            if(res.ok) {
-                alert("রিকোয়েস্ট সফল হয়েছে!");
-                loadBalance();
-            } else {
-                alert("ব্যালেন্স কম অথবা সমস্যা হয়েছে।");
+            if (data.referClaimed) {
+                document.getElementById('refer-input-area').classList.add('hidden');
+                document.getElementById('claimed-msg').classList.remove('hidden');
             }
         }
 
+        async function claimRefer() {
+            const code = document.getElementById('input-refer-code').value;
+            if(!code) return alert("রেফার কোড দিন!");
+            const res = await fetch('/api/wallet', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ type: 'claimRefer', userId, referCode: code })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                alert(`সফল! আপনি ৳${data.bonus} বোনাস পেয়েছেন।`);
+                loadBalance();
+            } else {
+                alert(data.error || "সমস্যা হয়েছে!");
+            }
+        }
+
+        function copyRefer() {
+            const link = `আপনার রেফার কোড: ${userId}\nগেম খেলুন এবং বোনাস নিন!`;
+            navigator.clipboard.writeText(link);
+            alert("রেফার কোড কপি হয়েছে! বন্ধুদের পাঠান।");
+        }
+
         async function updateSettings() {
-            const num = document.getElementById('admin-bikash-input').value;
+            const bikash = document.getElementById('admin-bikash-input').value;
+            const referBonus = document.getElementById('admin-bonus-input').value;
             await fetch('/api/wallet', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ type: 'updateSettings', bikash: num })
+                body: JSON.stringify({ type: 'updateSettings', bikash, referBonus })
             });
-            alert("নাম্বার আপডেট হয়েছে!");
-            init();
+            alert("Updated!"); init();
+        }
+
+        // ... (বাকি আগের ফাংশনগুলো: showTab, loadAdmin, adminAction, handleMoney, rollDice, createBoard)
+        function showTab(id) {
+            if(id === 'admin-tab' && !isAdmin) {
+                if(prompt("Admin PIN:") === "2025") isAdmin = true; else return;
+            }
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            if(id === 'admin-tab') loadAdmin();
+            if(id === 'game-tab') loadBalance();
         }
 
         async function loadAdmin() {
@@ -124,14 +154,9 @@
             const list = await res.json();
             const div = document.getElementById('admin-list');
             div.innerHTML = list.map(r => `
-                <div class="bg-white p-3 rounded shadow border-l-4 ${r.type==='deposit'?'border-pink-500':'border-blue-500'}">
-                    <p class="text-xs font-bold text-gray-400 uppercase">${r.type}</p>
-                    <p class="font-bold">৳${r.amount} (${r.userId})</p>
-                    <p class="text-[10px] text-gray-500">TrxID/Phone: ${r.type==='deposit'?r.trxId:r.phone}</p>
-                    <div class="flex gap-2 mt-2">
-                        <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount}, 'approve', '${r.type}')" class="bg-green-600 text-white px-3 py-1 rounded text-xs">Approve</button>
-                        <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount}, 'reject', '${r.type}')" class="bg-red-600 text-white px-3 py-1 rounded text-xs">Cancel/Reject</button>
-                    </div>
+                <div class="bg-white p-3 rounded-2xl shadow flex justify-between items-center border-l-4 border-pink-500">
+                    <div><p class="font-bold">৳${r.amount}</p><p class="text-[9px] text-gray-400">${r.trxId}</p></div>
+                    <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount}, 'approve', '${r.type}')" class="bg-green-600 text-white px-3 py-1 rounded-xl text-xs font-bold">Approve</button>
                 </div>
             `).join('');
         }
@@ -142,19 +167,35 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ action, id, userId, amount, type })
             });
-            loadAdmin();
-            loadBalance();
+            loadAdmin(); loadBalance();
         }
 
-        function showTab(id) {
-            if(id === 'admin-tab' && !isAdmin) {
-                const pin = prompt("Admin Pin:");
-                if(pin === "2025") isAdmin = true;
-                else return;
-            }
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-            if(id === 'admin-tab') loadAdmin();
+        async function handleMoney(type) {
+            const amount = document.getElementById('dep-amount').value;
+            const trxId = document.getElementById('dep-trx').value;
+            await fetch('/api/wallet', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ type, userId, amount, trxId })
+            });
+            alert("Sent!");
+        }
+
+        function rollDice() {
+            const v = Math.floor(Math.random() * 6) + 1;
+            alert("ছক্কা: " + v);
+        }
+
+        // বোর্ড ড্রয়িং
+        const b = document.getElementById('ludo-board');
+        for(let i=0; i<225; i++) {
+            let r=Math.floor(i/15), c=i%15;
+            let d=document.createElement('div'); d.className='cell';
+            if(r<6&&c<6) d.classList.add('red');
+            else if(r<6&&c>8) d.classList.add('green');
+            else if(r>8&&c<6) d.classList.add('yellow');
+            else if(r>8&&c>8) d.classList.add('blue');
+            b.appendChild(d);
         }
 
         init();
