@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludo Cash Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --red: #ff4d4d; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
+        #ludo-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; border: 4px solid #333; margin: auto; }
+        .cell { border: 1px solid #eee; background: white; position: relative; }
+        .red { background-color: var(--red); } .green { background-color: var(--green); }
+        .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
+        .tab-content { display: none; } .active-tab { display: block; }
+    </style>
+</head>
+<body class="bg-gray-100 pb-20">
+
+    <!-- HEADER -->
+    <div class="bg-blue-700 text-white p-4 flex justify-between shadow-lg">
+        <h1 class="font-bold">LUDO WIN</h1>
+        <div class="text-right">
+            <p class="text-xs">Balance</p>
+            <p class="font-bold text-yellow-400">৳ <span id="balance">0</span></p>
+        </div>
+    </div>
+
+    <!-- GAME TAB -->
+    <div id="game-tab" class="tab-content active-tab p-2">
+        <div id="ludo-board" class="mt-4 shadow-xl bg-white"></div>
+        <div class="mt-6 flex justify-around items-center bg-white p-4 rounded-xl shadow mx-2">
+            <button onclick="rollDice()" class="bg-blue-600 text-white px-10 py-4 rounded-lg font-bold text-2xl active:scale-95 shadow-lg">
+                🎲 <span id="dice-val">?</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- WALLET TAB -->
+    <div id="wallet-tab" class="tab-content p-4">
+        <div class="bg-white p-5 rounded-xl shadow">
+            <h2 class="font-bold text-lg mb-4">Deposit (bKash/Nagad)</h2>
+            <div class="bg-pink-50 p-3 rounded border border-pink-200 mb-4">
+                <p class="text-xs text-pink-600">Our Personal Number:</p>
+                <p class="font-bold text-xl">017XXXXXXXX</p>
+            </div>
+            <input type="number" id="dep-amount" placeholder="Amount" class="w-full border p-3 rounded mb-2">
+            <input type="text" id="dep-trx" placeholder="Transaction ID (TrxID)" class="w-full border p-3 rounded mb-4">
+            <button onclick="submitDeposit()" class="w-full bg-pink-600 text-white py-3 rounded font-bold">Submit Request</button>
+        </div>
+    </div>
+
+    <!-- ADMIN TAB -->
+    <div id="admin-tab" class="tab-content p-4">
+        <h2 class="font-bold text-red-600 mb-4">Admin: Approve Payments</h2>
+        <div id="admin-list" class="space-y-3"></div>
+    </div>
+
+    <!-- FOOTER NAV -->
+    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-2xl">
+        <button onclick="showTab('game-tab')" class="font-bold text-blue-600">PLAY</button>
+        <button onclick="showTab('wallet-tab')" class="font-bold text-gray-500">WALLET</button>
+        <button onclick="showTab('admin-tab')" class="font-bold text-gray-400 text-xs">ADMIN</button>
+    </div>
+
+    <script>
+        const board = document.getElementById('ludo-board');
+        for (let i = 0; i < 225; i++) {
+            let row = Math.floor(i / 15), col = i % 15;
+            let div = document.createElement('div'); div.className = 'cell';
+            if(row < 6 && col < 6) div.classList.add('red');
+            else if(row < 6 && col > 8) div.classList.add('green');
+            else if(row > 8 && col < 6) div.classList.add('yellow');
+            else if(row > 8 && col > 8) div.classList.add('blue');
+            board.appendChild(div);
+        }
+
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
+            document.getElementById(id).classList.add('active-tab');
+        }
+
+        let balance = 0; let requests = [];
+        function submitDeposit() {
+            let amt = document.getElementById('dep-amount').value;
+            let trx = document.getElementById('dep-trx').value;
+            if(!amt || !trx) return alert("Fill all fields");
+            requests.push({ id: Date.now(), amt, trx });
+            renderAdmin(); alert("Sent to Admin!");
+        }
+
+        function renderAdmin() {
+            const list = document.getElementById('admin-list');
+            list.innerHTML = "";
+            requests.forEach(r => {
+                list.innerHTML += `<div class="bg-white p-3 shadow rounded border-l-4 border-green-500 flex justify-between items-center">
+                    <div><p>৳${r.amt}</p><p class="text-xs">${r.trx}</p></div>
+                    <button onclick="approve(${r.id})" class="bg-green-600 text-white px-3 py-1 rounded text-sm">Approve</button>
+                </div>`;
+            });
+        }
+
+        function approve(id) {
+            let r = requests.find(x => x.id === id);
+            balance += parseInt(r.amt);
+            document.getElementById('balance').innerText = balance;
+            requests = requests.filter(x => x.id !== id);
+            renderAdmin();
+        }
+
+        function rollDice() {
+            document.getElementById('dice-val').innerText = Math.floor(Math.random() * 6) + 1;
+        }
+    </script>
+</body>
+</html>
