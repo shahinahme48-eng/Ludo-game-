@@ -1,41 +1,51 @@
 const { MongoClient, ObjectId } = require('mongodb');
-const client = new MongoClient(process.env.STORAGE_URL);
+
+// Vercel-এ আপনার variable নাম STORAGE_URL না হলে MONGODB_URL দিয়ে ট্রাই করতে পারেন
+const uri = process.env.STORAGE_URL || process.env.MONGODB_URL || process.env.MONGODB_URI;
+let cachedClient = null;
+
+async function connectToDatabase() {
+    if (cachedClient) return cachedClient;
+    const client = new MongoClient(uri);
+    await client.connect();
+    cachedClient = client;
+    return client;
+}
 
 export default async function handler(req, res) {
     try {
-        await client.connect();
+        const client = await connectToDatabase();
         const db = client.db('ludocash');
         const transactions = db.collection('transactions');
         const users = db.collection('users');
         const settings = db.collection('settings');
 
-        // ১. সেটিংস (বিকাশ নাম্বার) গেট এবং আপডেট
+        // ১. সেটিংস (বিকাশ নাম্বার) গেট করা
         if (req.method === 'GET' && req.query.type === 'settings') {
             const data = await settings.findOne({ id: 'config' });
-            return res.status(200).json(data || { bikash: '01700000000' });
+            return res.status(200).json(data || { bikash: 'নাম্বার সেট করুন' });
         }
+
+        // ২. সেটিংস আপডেট করা (অ্যাডমিন প্যানেল থেকে)
         if (req.method === 'POST' && req.body.type === 'updateSettings') {
             await settings.updateOne({ id: 'config' }, { $set: { bikash: req.body.bikash } }, { upsert: true });
             return res.status(200).json({ success: true });
         }
 
-        // ২. ব্যালেন্স চেক
+        // ৩. ব্যালেন্স চেক করা
         if (req.method === 'GET' && req.query.userId) {
             const user = await users.findOne({ userId: req.query.userId });
             return res.status(200).json({ balance: user ? user.balance : 0 });
         }
 
-        // ৩. ডিপোজিট এবং উইথড্র রিকোয়েস্ট সাবমিট
+        // ৪. ডিপোজিট ও উইথড্র রিকোয়েস্ট
         if (req.method === 'POST' && (req.body.type === 'deposit' || req.body.type === 'withdraw')) {
             const { userId, amount, trxId, type, phone } = req.body;
-            
             if (type === 'withdraw') {
                 const user = await users.findOne({ userId });
-                if (!user || user.balance < amount) return res.status(400).json({ error: 'Insufficient balance' });
-                // উইথড্র করলে সাথে সাথে ব্যালেন্স কেটে রাখা হবে (পেন্ডিং অবস্থায়)
+                if (!user || user.balance < amount) return res.status(400).json({ error: 'ব্যালেন্স কম' });
                 await users.updateOne({ userId }, { $inc: { balance: -parseInt(amount) } });
             }
-
             await transactions.insertOne({
                 userId, amount: parseInt(amount), trxId: trxId || 'N/A', 
                 phone: phone || 'N/A', type, status: 'pending', date: new Date()
@@ -43,16 +53,15 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true });
         }
 
-        // ৪. অ্যাডমিন: সব পেন্ডিং রিকোয়েস্ট দেখা
+        // ৫. অ্যাডমিন লিস্ট
         if (req.method === 'GET' && req.query.admin === 'true') {
             const list = await transactions.find({ status: 'pending' }).toArray();
             return res.status(200).json(list);
         }
 
-        // ৫. অ্যাডমিন: রিকোয়েস্ট অ্যাপ্রুভ বা রিজেক্ট (ক্যানসেল)
+        // ৬. অ্যাডমিন অ্যাকশন
         if (req.method === 'POST' && req.body.action) {
             const { id, userId, amount, action, type } = req.body;
-            
             if (action === 'approve') {
                 await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: 'approved' } });
                 if (type === 'deposit') {
@@ -61,15 +70,13 @@ export default async function handler(req, res) {
             } else if (action === 'reject') {
                 await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: 'rejected' } });
                 if (type === 'withdraw') {
-                    // উইথড্র রিজেক্ট করলে টাকা রিফান্ড
                     await users.updateOne({ userId }, { $inc: { balance: parseInt(amount) } });
                 }
             }
             return res.status(200).json({ success: true });
         }
-
-        res.status(404).send("Not found");
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error(e);
+        res.status(500).json({ error: "Server Error", details: e.message });
     }
 }
