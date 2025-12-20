@@ -3,24 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Cash Pro</title>
+    <title>Ludo Cash Royal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
         body { background: #f3f4f6; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-        #ludo-board { 
-            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
-            width: 94vw; height: 94vw; max-width: 420px; max-height: 420px; 
-            margin: auto; background: #fff; border: 4px solid #333; border-radius: 8px; overflow: hidden;
-        }
+        #ludo-board { display: grid; grid-template-columns: repeat(15, 1fr); width: 94vw; height: 94vw; max-width: 420px; margin: auto; background: #fff; border: 4px solid #333; border-radius: 8px; overflow: hidden; }
         .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
-        .red { background-color: var(--red); } .green { background-color: var(--green); }
-        .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        .piece { width: 70%; height: 70%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; }
-        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); }
-        .p-green { background: radial-gradient(circle, #58d68d, #1d8348); }
-        .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); }
-        .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
+        .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
+        .piece { width: 70%; height: 70%; border-radius: 50%; border: 2px solid white; position: absolute; z-index: 10; }
+        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
     </style>
 </head>
@@ -28,49 +20,59 @@
 
     <div class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
         <h1 class="font-bold text-sm">LUDO WIN ROYAL</h1>
-        <div class="text-right">
-            <p class="text-[9px] opacity-80 uppercase">Wallet Balance</p>
-            <p class="font-bold text-yellow-300 text-lg">৳ <span id="balance">0</span></p>
-        </div>
+        <div class="text-right"><p class="text-[9px] uppercase">Balance</p><p class="font-bold text-yellow-300 text-lg">৳ <span id="balance">0</span></p></div>
     </div>
 
-    <!-- Play -->
+    <!-- PLAY TAB -->
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="ludo-board" class="mt-4 shadow-xl border-2 border-white"></div>
         <div class="mt-6 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-2">
             <button onclick="rollDice()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-3xl">🎲</button>
             <div class="text-center">
-                <p class="text-[8px] text-gray-400">MY ID: <span id="display-id" class="font-bold text-blue-600">...</span></p>
-                <button onclick="loadBalance()" class="text-[9px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full mt-1">🔄 Refresh Balance</button>
+                <p class="text-[8px] text-gray-400 font-bold">MY ID: <span id="display-id" class="text-blue-600">...</span></p>
+                <button onclick="loadBalance()" class="text-[9px] bg-blue-100 text-blue-600 px-3 py-1 rounded-full mt-1 font-bold italic">🔄 Refresh</button>
             </div>
         </div>
     </div>
 
-    <!-- Wallet -->
-    <div id="wallet-tab" class="tab-content p-4">
-        <div class="bg-white p-6 rounded-3xl shadow-md border-t-8 border-pink-500">
-            <div class="bg-pink-50 p-4 rounded-xl text-center mb-5 border border-pink-100">
-                <p class="text-[10px] text-pink-600 font-bold italic">Send Money (bKash):</p>
-                <p id="display-bikash" class="font-black text-xl text-pink-700 tracking-widest uppercase">Loading...</p>
-                <button onclick="copyText('display-bikash')" class="bg-pink-600 text-white px-4 py-1 rounded-full text-[10px] mt-2">COPY NUMBER</button>
+    <!-- WALLET TAB -->
+    <div id="wallet-tab" class="tab-content p-4 space-y-4">
+        <!-- Refer & Earn -->
+        <div class="bg-gradient-to-r from-orange-400 to-yellow-500 p-5 rounded-3xl text-white shadow-lg">
+            <h3 class="font-black text-lg">🎁 Refer & Earn</h3>
+            <p class="text-[10px] mb-3 opacity-90 italic">বন্ধুদের ইনভাইট করে বোনাস পান!</p>
+            <div class="bg-white/20 p-3 rounded-xl flex justify-between items-center mb-4">
+                <div><p class="text-[9px] uppercase">My Code:</p><p id="my-refer-display" class="font-bold text-xl">...</p></div>
+                <button onclick="copyRefer()" class="bg-white text-orange-600 px-4 py-2 rounded-lg font-bold text-xs">SHARE</button>
             </div>
+            <div id="refer-input-box" class="flex gap-2">
+                <input type="text" id="input-refer-code" placeholder="বন্ধুর রেফার কোড দিন" class="flex-1 p-3 rounded-xl text-black text-sm outline-none">
+                <button onclick="claimRefer()" class="bg-black text-white px-5 rounded-xl font-bold text-xs">CLAIM</button>
+            </div>
+            <p id="refer-claimed-msg" class="hidden text-center font-bold text-xs mt-2">✅ বোনাস নেওয়া হয়েছে!</p>
+        </div>
+
+        <!-- Deposit -->
+        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500">
+            <p id="display-bikash" class="font-black text-xl text-pink-700 text-center mb-4 bg-pink-50 p-3 rounded-xl border border-pink-100 uppercase tracking-widest italic">Loading...</p>
             <input type="number" id="dep-amount" placeholder="Amount (৳)" class="w-full border p-4 rounded-2xl mb-3 outline-none">
             <input type="text" id="dep-trx" placeholder="Transaction ID (TrxID)" class="w-full border p-4 rounded-2xl mb-5 outline-none">
-            <button onclick="handleMoney()" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold shadow-lg">SUBMIT REQUEST</button>
+            <button onclick="handleMoney()" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold uppercase shadow-lg">SUBMIT REQUEST</button>
         </div>
     </div>
 
-    <!-- Admin -->
+    <!-- ADMIN TAB -->
     <div id="admin-tab" class="tab-content p-4">
         <div class="bg-gray-900 text-white p-5 rounded-3xl mb-6 shadow-xl">
-            <h3 class="text-xs text-yellow-400 mb-4 uppercase">Admin Settings</h3>
+            <h3 class="text-xs text-yellow-400 mb-4 uppercase font-bold">Settings</h3>
             <input type="text" id="admin-bikash-input" placeholder="bKash Number" class="bg-gray-800 p-3 rounded-xl w-full mb-3 text-sm text-white outline-none">
-            <button onclick="updateSettings()" class="w-full bg-yellow-500 text-black py-3 rounded-xl font-bold">SAVE SETTINGS</button>
+            <input type="number" id="admin-bonus-input" placeholder="Refer Bonus Amount" class="bg-gray-800 p-3 rounded-xl w-full mb-4 text-sm text-white outline-none">
+            <button onclick="updateSettings()" class="w-full bg-yellow-500 text-black py-3 rounded-xl font-bold uppercase text-xs">Save Settings</button>
         </div>
         <div id="admin-list" class="space-y-4"></div>
     </div>
 
-    <!-- Navigation -->
+    <!-- Bottom Nav -->
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
         <button onclick="showTab('game-tab')" class="flex flex-col items-center"><span class="text-xl">🎮</span><span class="text-[9px]">PLAY</span></button>
         <button onclick="showTab('wallet-tab')" class="flex flex-col items-center"><span class="text-xl">💰</span><span class="text-[9px]">WALLET</span></button>
@@ -78,12 +80,12 @@
     </div>
 
     <script>
-        // আপনার UserId আজীবন এক রাখার জন্য LocalStorage ব্যবহার
-        if (!localStorage.getItem('ludo_id')) {
-            localStorage.setItem('ludo_id', "SHAHIN_" + Math.floor(1000 + Math.random() * 9000));
+        if (!localStorage.getItem('ludo_pro_id')) {
+            localStorage.setItem('ludo_pro_id', "SN" + Math.floor(1000 + Math.random() * 9000));
         }
-        const userId = localStorage.getItem('ludo_id');
+        const userId = localStorage.getItem('ludo_pro_id');
         document.getElementById('display-id').innerText = userId;
+        document.getElementById('my-refer-display').innerText = userId;
 
         let isAdmin = false;
 
@@ -91,64 +93,60 @@
             const res = await fetch(`/api/wallet?userId=${userId}`);
             const data = await res.json();
             document.getElementById('balance').innerText = data.balance || 0;
+            if (data.referClaimed) {
+                document.getElementById('refer-input-box').classList.add('hidden');
+                document.getElementById('refer-claimed-msg').classList.remove('hidden');
+            }
         }
 
         async function init() {
             createBoard(); loadBalance();
-            try {
-                const res = await fetch('/api/wallet?type=settings');
-                const data = await res.json();
-                document.getElementById('display-bikash').innerText = data.bikash || "017XXXXXXXX";
-                document.getElementById('admin-bikash-input').value = data.bikash || "";
-            } catch(e) { }
+            const res = await fetch('/api/wallet?type=settings');
+            const data = await res.json();
+            document.getElementById('display-bikash').innerText = data.bikash || "017XXXXXXXX";
+            document.getElementById('admin-bikash-input').value = data.bikash || "";
+            document.getElementById('admin-bonus-input').value = data.referBonus || 10;
+        }
+
+        async function claimRefer() {
+            const code = document.getElementById('input-refer-code').value;
+            if(!code) return alert("রেফার কোড দিন!");
+            const res = await fetch('/api/wallet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type: 'claimRefer', userId, referCode: code }) });
+            const data = await res.json();
+            if(res.ok) { alert("৳" + data.bonus + " বোনাস সফলভাবে যোগ হয়েছে!"); loadBalance(); }
+            else { alert(data.error); }
         }
 
         async function handleMoney() {
             const amount = document.getElementById('dep-amount').value;
             const trxId = document.getElementById('dep-trx').value;
-            if(!amount || amount < 10) return alert("Enter valid amount!");
-            await fetch('/api/wallet', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ type: 'deposit', userId: userId, amount, trxId }) 
-            });
-            alert("Sent! Please wait for approval.");
-            document.getElementById('dep-amount').value = "";
-            document.getElementById('dep-trx').value = "";
+            if(!amount) return alert("টাকার পরিমাণ দিন");
+            await fetch('/api/wallet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type: 'deposit', userId, amount, trxId }) });
+            alert("Request Sent!");
         }
 
         async function loadAdmin() {
             const res = await fetch('/api/wallet?admin=true');
             const list = await res.json();
             const div = document.getElementById('admin-list');
-            div.innerHTML = list.length === 0 ? "<p class='text-center text-gray-400 py-10'>No requests</p>" : 
+            div.innerHTML = list.length === 0 ? "<p class='text-center text-gray-400 py-10 italic'>No Requests</p>" : 
             list.map(r => `
                 <div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center mb-3">
-                    <div>
-                        <p class="font-black text-gray-800">৳${r.amount}</p>
-                        <p class="text-[9px] text-blue-600 font-bold">${r.userId}</p>
-                    </div>
-                    <button onclick="adminAction('${r._id}')" class="bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-bold">Approve</button>
+                    <div><p class="font-black text-gray-800">৳${r.amount}</p><p class="text-[9px] text-blue-600 font-bold italic uppercase">${r.userId}</p></div>
+                    <button onclick="adminAction('${r._id}')" class="bg-green-600 text-white px-5 py-2 rounded-xl text-[10px] font-bold shadow-md">APPROVE</button>
                 </div>
             `).join('');
         }
 
         async function adminAction(id) {
-            await fetch('/api/wallet', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ action: 'approve', id: id }) 
-            });
+            await fetch('/api/wallet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ action: 'approve', id }) });
             alert("Approved!"); loadAdmin(); setTimeout(loadBalance, 1000);
         }
 
         async function updateSettings() {
             const bikash = document.getElementById('admin-bikash-input').value;
-            await fetch('/api/wallet', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ type: 'updateSettings', bikash }) 
-            });
+            const referBonus = document.getElementById('admin-bonus-input').value;
+            await fetch('/api/wallet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type: 'updateSettings', bikash, referBonus }) });
             alert("Saved!"); init();
         }
 
@@ -156,42 +154,29 @@
             if(id === 'admin-tab' && !isAdmin) {
                 if(prompt("PIN:") === "2025") isAdmin = true; else return;
             }
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
-            document.getElementById(id).classList.add('active-tab');
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
             if(id === 'admin-tab') loadAdmin();
             if(id === 'game-tab') loadBalance();
         }
 
         function createBoard() {
-            const b = document.getElementById('ludo-board');
-            b.innerHTML = "";
+            const b = document.getElementById('ludo-board'); b.innerHTML = "";
             for(let i=0; i<225; i++) {
-                let r=Math.floor(i/15), c=i%15, d=document.createElement('div'); 
-                d.className='cell'; d.id = `c-${r}-${c}`;
-                if(r<6&&c<6) d.classList.add('red');
-                else if(r<6&&c>8) d.classList.add('green');
-                else if(r>8&&c<6) d.classList.add('yellow');
-                else if(r>8&&c>8) d.classList.add('blue');
+                let r=Math.floor(i/15), c=i%15, d=document.createElement('div'); d.className='cell'; d.id = `c-${r}-${c}`;
+                if(r<6&&c<6) d.classList.add('red'); else if(r<6&&c>8) d.classList.add('green'); else if(r>8&&c<6) d.classList.add('yellow'); else if(r>8&&c>8) d.classList.add('blue');
                 b.appendChild(d);
             }
-            const addP = (r,c,cl) => { 
-                const p=document.createElement('div'); p.className=`piece p-${cl}`; 
-                document.getElementById(`c-${r}-${c}`).appendChild(p);
-            };
+            const addP = (r,c,cl) => { const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p); };
             addP(1,1,'red'); addP(1,4,'red'); addP(4,1,'red'); addP(4,4,'red');
             addP(1,10,'green'); addP(1,13,'green'); addP(4,10,'green'); addP(4,13,'green');
             addP(10,1,'yellow'); addP(10,4,'yellow'); addP(13,1,'yellow'); addP(13,4,'yellow');
             addP(10,10,'blue'); addP(10,13,'blue'); addP(13,10,'blue'); addP(13,13,'blue');
         }
 
-        function rollDice() {
-            const v = Math.floor(Math.random() * 6) + 1;
-            document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v];
-        }
-
-        function copyText(id) { 
-            navigator.clipboard.writeText(document.getElementById(id).innerText); alert("Copied!"); 
-        }
+        function rollDice() { const v = Math.floor(Math.random() * 6) + 1; document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v]; }
+        function copyRefer() { navigator.clipboard.writeText(userId); alert("Refer Code Copied: " + userId); }
+        function copyText(id) { navigator.clipboard.writeText(document.getElementById(id).innerText); alert("Number Copied!"); }
 
         init();
     </script>
