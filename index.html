@@ -3,138 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Cash Royal - Ultimate</title>
+    <title>Ludo Cash Online</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
-        body { background: #f0f2f5; font-family: sans-serif; overflow-x: hidden; }
+        body { background: #f0f2f5; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         #ludo-board { 
-            display: grid; grid-template-columns: repeat(15, 1fr); 
+            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
             width: 95vw; height: 95vw; max-width: 450px; max-height: 450px; 
-            margin: auto; background: #fff; border: 6px solid #333;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3); border-radius: 8px; overflow: hidden;
+            margin: auto; background: #fff; border: 5px solid #333; border-radius: 8px; overflow: hidden;
         }
-        .cell { border: 0.1px solid #ddd; position: relative; display: flex; align-items: center; justify-content: center; }
+        .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
         .red { background-color: var(--red); } .green { background-color: var(--green); }
         .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        
-        /* Piece (Guti) Design */
-        .piece {
-            width: 70%; height: 70%; border-radius: 50%;
-            border: 2px solid white; box-shadow: 0 3px 5px rgba(0,0,0,0.4);
-            position: absolute; z-index: 10;
-        }
+        .piece { width: 70%; height: 70%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; }
         .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); }
         .p-green { background: radial-gradient(circle, #58d68d, #1d8348); }
         .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); }
         .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
-
         .tab-content { display: none; } .active-tab { display: block; }
     </style>
 </head>
 <body class="pb-24">
 
-    <!-- WhatsApp Floating Button -->
-    <a href="#" id="wa-link" target="_blank" class="fixed bottom-24 right-4 bg-green-500 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl z-50 animate-bounce">
+    <!-- WhatsApp Help -->
+    <a href="#" id="wa-link" target="_blank" class="fixed bottom-24 right-5 bg-green-500 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-2xl z-50">
         <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
     </a>
 
     <!-- Top Bar -->
     <div class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
         <h1 class="font-bold tracking-tighter">LUDO WIN ROYAL</h1>
-        <div class="text-right"><p class="text-[9px] opacity-80 uppercase">Wallet</p><p class="font-bold text-yellow-300">৳ <span id="balance">0</span></p></div>
+        <div class="text-right">
+            <p class="text-[9px] opacity-80 uppercase">Wallet</p>
+            <p class="font-bold text-yellow-300">৳ <span id="balance">0</span></p>
+        </div>
     </div>
 
     <!-- Play Tab -->
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="ludo-board" class="mt-4 shadow-xl"></div>
-        <div class="mt-6 flex justify-around items-center bg-white p-4 rounded-3xl shadow-sm mx-2">
+        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow-sm mx-2">
             <button onclick="rollDice()" id="dice-btn" class="w-20 h-20 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 flex items-center justify-center active:scale-90 transition-all text-4xl">🎲</button>
-            <button onclick="openChat()" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">💬</button>
+            <button onclick="alert('Chat Coming Soon!')" class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">💬</button>
         </div>
     </div>
 
     <!-- Wallet Tab -->
     <div id="wallet-tab" class="tab-content hidden p-4 space-y-4">
-        <!-- Refer -->
-        <div class="bg-gradient-to-r from-yellow-500 to-orange-500 p-5 rounded-3xl text-white shadow-lg">
-            <h3 class="font-bold">Refer & Earn Bonus</h3>
-            <p class="text-xs mb-2">My Code: <span id="my-refer-code" class="font-bold ml-2">...</span></p>
-            <div class="flex gap-2">
-                <input type="text" id="input-refer-code" placeholder="Enter Refer Code" class="flex-1 p-3 rounded-xl text-black text-sm">
-                <button onclick="claimRefer()" class="bg-black text-white px-4 rounded-xl font-bold text-xs">Claim</button>
-            </div>
-        </div>
-
         <!-- Deposit -->
-        <div class="bg-white p-6 rounded-3xl shadow-md border-t-8 border-pink-500">
-            <p class="text-xs text-gray-400 font-bold mb-2">Deposit (বিকাশ পার্সোনাল)</p>
-            <div class="bg-pink-50 p-3 rounded-xl text-center mb-4">
-                <p id="display-bikash" class="font-black text-xl text-pink-700 tracking-widest">Loading...</p>
-                <button onclick="copyText('display-bikash')" class="text-[10px] text-pink-500 font-bold">COPY NUMBER</button>
+        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500">
+            <p class="text-xs text-gray-400 font-bold mb-2 uppercase">Deposit</p>
+            <div class="bg-pink-50 p-4 rounded-xl text-center mb-4">
+                <p id="display-bikash" class="font-black text-xl text-pink-700 tracking-widest uppercase">Loading...</p>
+                <button onclick="copyText('display-bikash')" class="text-[10px] bg-pink-600 text-white px-3 py-1 rounded mt-2">COPY NUMBER</button>
             </div>
-            <input type="number" id="dep-amount" placeholder="Amount" class="w-full border p-3 rounded-xl mb-2">
-            <input type="text" id="dep-trx" placeholder="TrxID" class="w-full border p-3 rounded-xl mb-4">
-            <button onclick="handleMoney('deposit')" class="w-full bg-pink-600 text-white py-4 rounded-xl font-bold">Submit Deposit</button>
+            <input type="number" id="dep-amount" placeholder="Amount" class="w-full border p-4 rounded-xl mb-3">
+            <input type="text" id="dep-trx" placeholder="Transaction ID" class="w-full border p-4 rounded-xl mb-4">
+            <button onclick="handleMoney('deposit')" class="w-full bg-pink-600 text-white py-4 rounded-xl font-bold uppercase shadow-lg">Submit Request</button>
         </div>
     </div>
 
     <!-- Admin Tab -->
     <div id="admin-tab" class="tab-content hidden p-4">
-        <div class="bg-gray-900 text-white p-5 rounded-3xl mb-4">
-            <h3 class="text-xs text-yellow-500 mb-4 uppercase">Admin Setup</h3>
-            <input type="text" id="admin-bikash-input" placeholder="Bikash Number" class="bg-gray-800 p-3 rounded-xl w-full mb-3 text-sm">
-            <input type="text" id="admin-wa-input" placeholder="WhatsApp (e.g. 88017...)" class="bg-gray-800 p-3 rounded-xl w-full mb-4 text-sm">
+        <div class="bg-gray-900 text-white p-5 rounded-3xl mb-5 shadow-xl">
+            <h3 class="text-xs text-yellow-500 mb-4 uppercase font-bold">Admin Controls</h3>
+            <input type="text" id="admin-bikash-input" placeholder="Bikash Number" class="bg-gray-800 p-3 rounded-xl w-full mb-3 text-sm text-white">
+            <input type="text" id="admin-wa-input" placeholder="WhatsApp (e.g. 88017...)" class="bg-gray-800 p-3 rounded-xl w-full mb-4 text-sm text-white">
             <button onclick="updateSettings()" class="w-full bg-yellow-500 text-black py-3 rounded-xl font-bold">SAVE SETTINGS</button>
         </div>
-        <div id="admin-list" class="space-y-3"></div>
+        <div id="admin-list" class="space-y-4"></div>
     </div>
 
-    <!-- Chat Overlay -->
-    <div id="chat-overlay" class="fixed inset-0 bg-black/50 z-[100] hidden items-end">
-        <div class="bg-white w-full rounded-t-3xl p-5">
-            <div class="flex justify-between mb-4"><h3 class="font-bold">Chat Support</h3><button onclick="closeChat()">✕</button></div>
-            <div id="chat-box" class="h-40 overflow-y-auto mb-4 bg-gray-50 p-2 rounded"></div>
-            <div class="flex gap-2">
-                <input type="text" id="chat-input" class="flex-1 bg-gray-100 p-3 rounded-xl" placeholder="Message...">
-                <button onclick="sendMsg()" class="bg-blue-600 text-white px-4 rounded-xl">Send</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Navigation -->
+    <!-- Bottom Nav -->
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
-        <button onclick="showTab('game-tab')" class="font-bold text-blue-600 text-xs">PLAY</button>
-        <button onclick="showTab('wallet-tab')" class="font-bold text-gray-500 text-xs">WALLET</button>
-        <button onclick="showTab('admin-tab')" class="font-bold text-gray-400 text-xs">ADMIN</button>
+        <button onclick="showTab('game-tab')" id="nav-play" class="text-blue-600 font-bold text-xs uppercase">Play</button>
+        <button onclick="showTab('wallet-tab')" id="nav-wallet" class="text-gray-400 font-bold text-xs uppercase">Wallet</button>
+        <button onclick="showTab('admin-tab')" id="nav-admin" class="text-gray-400 font-bold text-xs uppercase">Admin</button>
     </div>
 
     <script>
-        const userId = "PL" + Math.floor(1000 + Math.random() * 9000);
+        const userId = "PL_" + Math.floor(1000 + Math.random() * 9000);
         let isAdmin = false;
 
-        async function init() {
-            document.getElementById('my-refer-code').innerText = userId;
-            loadBalance();
-            try {
-                const res = await fetch('/api/wallet?type=settings');
-                const data = await res.json();
-                document.getElementById('display-bikash').innerText = data.bikash || "017XXXXXXXX";
-                document.getElementById('admin-bikash-input').value = data.bikash || "";
-                document.getElementById('admin-wa-input').value = data.wa || "";
-                document.getElementById('wa-link').href = `https://wa.me/${data.wa || '8801700000000'}?text=ID:${userId}`;
-            } catch(e) { console.log("Settings not found"); }
-        }
-
-        async function loadBalance() {
-            try {
-                const res = await fetch(`/api/wallet?userId=${userId}`);
-                const data = await res.json();
-                document.getElementById('balance').innerText = data.balance || 0;
-            } catch(e) { }
-        }
-
-        // Ludo Board with 16 Pieces
         function createBoard() {
             const b = document.getElementById('ludo-board');
             b.innerHTML = "";
@@ -147,42 +98,49 @@
                 else if(r>8&&c>8) d.classList.add('blue');
                 b.appendChild(d);
             }
-            // Place 16 Pieces in Home Bases
-            placePiece(1,1,'red'); placePiece(1,4,'red'); placePiece(4,1,'red'); placePiece(4,4,'red');
-            placePiece(1,10,'green'); placePiece(1,13,'green'); placePiece(4,10,'green'); placePiece(4,13,'green');
-            placePiece(10,1,'yellow'); placePiece(10,4,'yellow'); placePiece(13,1,'yellow'); placePiece(13,4,'yellow');
-            placePiece(10,10,'blue'); placePiece(10,13,'blue'); placePiece(13,10,'blue'); placePiece(13,13,'blue');
+            // 16 Pieces
+            const addP = (r,c,cl) => { const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p); };
+            addP(1,1,'red'); addP(1,4,'red'); addP(4,1,'red'); addP(4,4,'red');
+            addP(1,10,'green'); addP(1,13,'green'); addP(4,10,'green'); addP(4,13,'green');
+            addP(10,1,'yellow'); addP(10,4,'yellow'); addP(13,1,'yellow'); addP(13,4,'yellow');
+            addP(10,10,'blue'); addP(10,13,'blue'); addP(13,10,'blue'); addP(13,13,'blue');
         }
 
-        function placePiece(r, c, color) {
-            const p = document.createElement('div');
-            p.className = `piece p-${color}`;
-            document.getElementById(`c-${r}-${c}`).appendChild(p);
+        async function init() {
+            createBoard(); // গেম বোর্ড আগে লোড হবে
+            loadBalance();
+            try {
+                const res = await fetch('/api/wallet?type=settings');
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                document.getElementById('display-bikash').innerText = data.bikash || "017XXXXXXXX";
+                document.getElementById('admin-bikash-input').value = data.bikash || "";
+                document.getElementById('wa-link').href = `https://wa.me/${data.wa || '8801700000000'}`;
+            } catch(e) { 
+                document.getElementById('display-bikash').innerText = "017XXXXXXXX";
+            }
         }
 
-        function rollDice() {
-            const v = Math.floor(Math.random() * 6) + 1;
-            document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v];
-        }
-
-        function openChat() { document.getElementById('chat-overlay').classList.remove('hidden'); document.getElementById('chat-overlay').style.display='flex'; }
-        function closeChat() { document.getElementById('chat-overlay').style.display='none'; }
-        function sendMsg() {
-            const i = document.getElementById('chat-input');
-            if(!i.value) return;
-            const b = document.getElementById('chat-box');
-            b.innerHTML += `<p class='text-xs bg-white p-1 mb-1 rounded'>You: ${i.value}</p>`;
-            i.value = ""; b.scrollTop = b.scrollHeight;
+        async function loadBalance() {
+            try {
+                const res = await fetch(`/api/wallet?userId=${userId}`);
+                const data = await res.json();
+                document.getElementById('balance').innerText = data.balance || 0;
+            } catch(e) {}
         }
 
         function showTab(id) {
             if(id === 'admin-tab' && !isAdmin) {
-                if(prompt("Admin PIN:") === "2025") isAdmin = true; else return;
+                const pin = prompt("Admin PIN:");
+                if(pin === "2025") isAdmin = true; else return;
             }
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
             if(id === 'admin-tab') loadAdmin();
-            if(id === 'game-tab') loadBalance();
+            // Update nav colors
+            const navs = ['nav-play', 'nav-wallet', 'nav-admin'];
+            navs.forEach(n => document.getElementById(n).style.color = 'gray');
+            document.getElementById('nav-' + id.split('-')[0]).style.color = '#2563eb';
         }
 
         async function loadAdmin() {
@@ -191,8 +149,8 @@
             const div = document.getElementById('admin-list');
             div.innerHTML = list.map(r => `
                 <div class="bg-white p-4 rounded-2xl shadow flex justify-between items-center border-l-4 border-pink-500">
-                    <div><p class="font-bold">৳${r.amount}</p><p class="text-[9px] text-gray-400">${r.trxId || r.phone}</p></div>
-                    <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount}, 'approve', '${r.type}')" class="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Approve</button>
+                    <div><p class="font-bold">৳${r.amount}</p><p class="text-[9px] text-gray-400">${r.trxId || r.userId}</p></div>
+                    <button onclick="adminAction('${r._id}', '${r.userId}', ${r.amount}, 'approve', '${r.type}')" class="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase">Approve</button>
                 </div>
             `).join('');
         }
@@ -205,6 +163,7 @@
         async function handleMoney(type) {
             const amount = document.getElementById('dep-amount').value;
             const trxId = document.getElementById('dep-trx').value;
+            if(!amount) return alert("Enter amount");
             await fetch('/api/wallet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type, userId, amount, trxId }) });
             alert("Request sent!");
         }
@@ -213,12 +172,16 @@
             const bikash = document.getElementById('admin-bikash-input').value;
             const wa = document.getElementById('admin-wa-input').value;
             await fetch('/api/wallet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type: 'updateSettings', bikash, wa }) });
-            alert("Saved!"); init();
+            alert("Settings Saved!"); init();
+        }
+
+        function rollDice() {
+            const v = Math.floor(Math.random() * 6) + 1;
+            document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v];
         }
 
         function copyText(id) { const n = document.getElementById(id).innerText; navigator.clipboard.writeText(n); alert("Copied!"); }
-        
-        createBoard();
+
         init();
     </script>
 </body>
