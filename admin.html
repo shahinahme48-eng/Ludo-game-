@@ -6,125 +6,105 @@
     <title>Ludo Pro - Master Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; }
-        .admin-card { background: #1e293b; border-radius: 24px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); }
-        input, select { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; }
+        body { background: #0f172a; font-family: sans-serif; color: white; }
+        .admin-card { background: #1e293b; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; }
     </style>
 </head>
-<body class="p-4 pb-20">
+<body class="p-4">
 
-    <div id="login-screen" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
-        <div class="admin-card w-full max-w-sm text-center">
-            <h2 class="text-2xl font-black text-blue-500 mb-6 uppercase tracking-widest">Admin Login</h2>
-            <input type="password" id="admin-pin" placeholder="Enter Security PIN" class="w-full p-4 rounded-xl mb-4 text-center text-xl tracking-[10px]">
-            <button onclick="checkPin()" class="w-full bg-blue-600 py-4 rounded-xl font-bold uppercase tracking-widest shadow-lg">Access Dashboard</button>
+    <!-- Login PIN Screen -->
+    <div id="login-box" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
+        <div class="admin-card w-full max-w-sm text-center border border-blue-900">
+            <h2 class="text-xl font-bold text-blue-500 mb-6 uppercase">Admin Access</h2>
+            <input type="password" id="pin-input" placeholder="ENTER PIN" class="w-full p-4 rounded-xl mb-4 text-center text-2xl tracking-[10px] outline-none">
+            <button onclick="login()" class="w-full bg-blue-600 py-4 rounded-xl font-bold uppercase shadow-lg shadow-blue-900/40">Open Dashboard</button>
         </div>
     </div>
 
-    <div id="main-admin" class="hidden">
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-xl font-black text-blue-500 uppercase italic">Ludo Master Panel</h1>
-            <button onclick="location.reload()" class="bg-slate-800 p-2 rounded-full shadow-lg">🔄</button>
+    <!-- Main Content -->
+    <div id="dashboard" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-lg font-black text-blue-400 italic">MASTER CONTROL</h1>
+            <button onclick="location.reload()" class="bg-slate-800 p-2 rounded-full">🔄</button>
         </div>
 
-        <!-- Create Tournament Section -->
-        <div class="admin-card mb-8 border-l-8 border-yellow-500">
-            <h3 class="font-bold text-sm mb-5 uppercase text-yellow-500 flex items-center gap-2">
-                🏆 Host New Tournament
-            </h3>
+        <!-- 1. Settings Section -->
+        <div class="admin-card mb-6 border-l-4 border-cyan-500">
+            <h3 class="text-xs font-bold text-cyan-500 uppercase mb-4 tracking-widest">System Settings</h3>
             <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] text-gray-400 ml-1">Entry Fee (৳)</label>
-                        <input type="number" id="m-entry" class="w-full p-3 rounded-xl mt-1 outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-gray-400 ml-1">Prize Pool (৳)</label>
-                        <input type="number" id="m-prize" class="w-full p-3 rounded-xl mt-1 outline-none">
-                    </div>
+                <div>
+                    <label class="text-[10px] text-gray-400">bKash Number (Current)</label>
+                    <input type="text" id="set-bikash" class="w-full p-3 rounded-xl mt-1 text-sm outline-none">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] text-gray-400 ml-1">Game Mode</label>
-                        <select id="m-mode" class="w-full p-3 rounded-xl mt-1 outline-none">
-                            <option value="2">2 Players</option>
-                            <option value="4" selected>4 Players</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-gray-400 ml-1">Start Time</label>
-                        <input type="text" id="m-time" placeholder="e.g. 10:30 PM" class="w-full p-3 rounded-xl mt-1 outline-none">
-                    </div>
+                <div>
+                    <label class="text-[10px] text-gray-400">WhatsApp Helpline (e.g. 88017...)</label>
+                    <input type="text" id="set-wa" class="w-full p-3 rounded-xl mt-1 text-sm outline-none">
                 </div>
-                <button onclick="createMatch()" class="w-full bg-blue-600 py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-blue-900/40 active:scale-95 transition">Publish Tournament</button>
+                <button onclick="saveSettings()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold text-xs uppercase">Save All Settings</button>
             </div>
         </div>
 
-        <!-- Deposit Approvals -->
-        <div class="admin-card mb-8 border-l-8 border-pink-500">
-            <h3 class="font-bold text-sm mb-5 uppercase text-pink-500">💰 Pending Deposits</h3>
-            <div id="admin-list" class="space-y-4">
-                <p class="text-center text-gray-500 py-10">Searching for requests...</p>
+        <!-- 2. Tournaments Section -->
+        <div class="admin-card mb-6 border-l-4 border-yellow-500">
+            <h3 class="text-xs font-bold text-yellow-500 uppercase mb-4 tracking-widest">Host Match</h3>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <input type="number" id="m-entry" placeholder="Fee (৳)" class="p-3 rounded-xl text-sm outline-none">
+                <input type="number" id="m-prize" placeholder="Prize (৳)" class="p-3 rounded-xl text-sm outline-none">
+                <select id="m-mode" class="p-3 rounded-xl text-sm outline-none bg-slate-900 text-white">
+                    <option value="2">2 Players</option>
+                    <option value="4" selected>4 Players</option>
+                </select>
+                <input type="text" id="m-time" placeholder="Time (10:30 PM)" class="p-3 rounded-xl text-sm outline-none">
             </div>
+            <button onclick="createTournament()" class="w-full bg-yellow-600 text-black py-3 rounded-xl font-bold text-xs uppercase">Publish Tournament</button>
         </div>
 
-        <!-- General Settings -->
-        <div class="admin-card border-l-8 border-cyan-500">
-            <h3 class="font-bold text-sm mb-5 uppercase text-cyan-500">⚙️ System Settings</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-[10px] text-gray-400 ml-1">bKash Personal Number</label>
-                    <input type="text" id="set-bikash" class="w-full p-3 rounded-xl mt-1 outline-none">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-400 ml-1">WhatsApp Help Line (Country Code সহ)</label>
-                    <input type="text" id="set-wa" class="w-full p-3 rounded-xl mt-1 outline-none">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-400 ml-1">Refer Bonus Amount (৳)</label>
-                    <input type="number" id="set-bonus" class="w-full p-3 rounded-xl mt-1 outline-none">
-                </div>
-                <button onclick="updateSettings()" class="w-full bg-cyan-600 py-3 rounded-2xl font-bold uppercase text-xs tracking-widest">Save Settings</button>
+        <!-- 3. Payment Requests -->
+        <div class="admin-card border-l-4 border-pink-500">
+            <h3 class="text-xs font-bold text-pink-500 uppercase mb-4 tracking-widest">Pending Deposits</h3>
+            <div id="request-list" class="space-y-3">
+                <p class="text-center text-gray-600 py-4 text-xs italic">Loading requests...</p>
             </div>
         </div>
     </div>
 
     <script>
-        // Security PIN Check
-        function checkPin() {
-            const pin = document.getElementById('admin-pin').value;
-            if(pin === "2025") { // এখানে আপনার পিন কোড
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('main-admin').classList.remove('hidden');
-                loadData();
+        function login() {
+            if(document.getElementById('pin-input').value === "2025") {
+                document.getElementById('login-box').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                loadAdminData();
             } else {
-                alert("Incorrect PIN!");
+                alert("Wrong PIN!");
             }
         }
 
-        async function loadData() {
-            // Load Deposits
-            const res = await fetch('/api/wallet?admin=true');
-            const list = await res.json();
-            const div = document.getElementById('admin-list');
-            div.innerHTML = list.length === 0 ? "<p class='text-center text-gray-600 py-5'>No pending requests found.</p>" : 
-            list.map(r => `
-                <div class="bg-slate-900 p-4 rounded-2xl flex justify-between items-center border border-slate-800">
-                    <div>
-                        <p class="font-black text-xl text-white">৳${r.amount}</p>
-                        <p class="text-[10px] text-blue-400 font-bold uppercase mt-1">${r.userId}</p>
-                        <p class="text-[9px] text-gray-500 font-mono italic">TrxID: ${r.trxId || 'N/A'}</p>
-                    </div>
-                    <button onclick="approve('${r._id}')" class="bg-green-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-green-900/40">Approve</button>
-                </div>
-            `).join('');
-
+        async function loadAdminData() {
             // Load Settings
-            const setRes = await fetch('/api/wallet?type=settings');
-            const setData = await setRes.json();
-            document.getElementById('set-bikash').value = setData.bikash || "";
-            document.getElementById('set-wa').value = setData.wa || "";
-            document.getElementById('set-bonus').value = setData.referBonus || 10;
+            try {
+                const res = await fetch('/api/wallet?type=settings');
+                const data = await res.json();
+                document.getElementById('set-bikash').value = data.bikash || "";
+                document.getElementById('set-wa').value = data.wa || "";
+            } catch(e) {}
+
+            // Load Requests
+            try {
+                const res = await fetch('/api/wallet?admin=true');
+                const list = await res.json();
+                const div = document.getElementById('request-list');
+                div.innerHTML = list.length === 0 ? "<p class='text-center text-gray-500 py-4 text-[10px]'>NO PENDING REQUESTS</p>" : 
+                list.map(r => `
+                    <div class="bg-slate-900 p-4 rounded-2xl flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-white">৳${r.amount}</p>
+                            <p class="text-[9px] text-blue-400 font-bold uppercase">${r.userId}</p>
+                        </div>
+                        <button onclick="approve('${r._id}')" class="bg-green-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg">Approve</button>
+                    </div>
+                `).join('');
+            } catch(e) {}
         }
 
         async function approve(id) {
@@ -133,40 +113,36 @@
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ action: 'approve', id }) 
             });
-            alert("Deposit Approved Successfully!");
-            loadData();
+            alert("Approved!");
+            loadAdminData();
         }
 
-        async function createMatch() {
+        async function createTournament() {
             const entryFee = document.getElementById('m-entry').value;
             const prize = document.getElementById('m-prize').value;
             const mode = document.getElementById('m-mode').value;
             const startTime = document.getElementById('m-time').value;
-
-            if(!entryFee || !prize || !startTime) return alert("Please fill all tournament details!");
+            if(!entryFee || !prize) return alert("Fill Info!");
 
             await fetch('/api/wallet', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ type: 'createMatch', entryFee, prize, mode, startTime }) 
             });
-            alert("Tournament is now LIVE in the Lobby!");
-            document.getElementById('m-entry').value = '';
-            document.getElementById('m-prize').value = '';
-            document.getElementById('m-time').value = '';
+            alert("Live!");
+            document.getElementById('m-entry').value=''; document.getElementById('m-prize').value='';
         }
 
-        async function updateSettings() {
+        async function saveSettings() {
             const bikash = document.getElementById('set-bikash').value;
             const wa = document.getElementById('set-wa').value;
-            const referBonus = document.getElementById('set-bonus').value;
             await fetch('/api/wallet', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ type: 'updateSettings', bikash, wa, referBonus }) 
+                body: JSON.stringify({ type: 'updateSettings', bikash, wa }) 
             });
-            alert("All system settings updated!");
+            alert("Updated!");
         }
     </script>
 </body>
-  </html>
+    </html>
