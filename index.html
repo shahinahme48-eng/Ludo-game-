@@ -12,7 +12,7 @@
         .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
         .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
         .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); position: absolute; z-index: 10; }
-        .p-red { background: radial-gradient(circle at 30% 30%, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle at 30% 30%, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle at 30% 30%, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle at 30% 30%, #5dade2, #1b4f72); }
+        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
     </style>
 </head>
@@ -22,23 +22,23 @@
         <div class="text-right"><p class="text-[9px] font-bold opacity-80 uppercase">Wallet</p><p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p></div>
     </div>
 
-    <!-- PLAY TAB -->
+    <!-- Tab 1: Game -->
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="board" class="mt-4 shadow-xl"></div>
-        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow-sm mx-4 border border-gray-100">
+        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow-sm mx-4">
             <button onclick="roll()" id="d-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl">🎲</button>
-            <div id="status-msg" class="text-[10px] font-bold text-blue-600 animate-pulse uppercase">Connecting...</div>
+            <div id="status-msg" class="text-[10px] font-bold text-blue-600 uppercase">Connecting...</div>
             <button onclick="alert('Join match to chat!')" class="w-10 h-10 rounded-full bg-gray-100 text-xl">💬</button>
         </div>
     </div>
 
-    <!-- LOBBY TAB -->
+    <!-- Tab 2: Lobby -->
     <div id="lobby-tab" class="tab-content p-4"><h2 class="font-black text-center mb-6 uppercase text-sm">🏆 Lobby</h2><div id="match-list" class="space-y-4"></div></div>
 
-    <!-- WALLET TAB -->
+    <!-- Tab 3: Wallet -->
     <div id="wallet-tab" class="tab-content p-4 space-y-4">
         <div class="bg-gradient-to-r from-orange-400 to-yellow-500 p-5 rounded-3xl text-white shadow-lg"><p class="text-[9px] uppercase font-bold">Refer Code:</p><p id="my-ref" class="font-black text-xl mb-3">...</p><div id="ref-box" class="flex gap-2"><input type="text" id="in-ref" placeholder="Friend Code" class="flex-1 p-2 rounded-xl text-black text-sm outline-none"><button onclick="claim()" class="bg-black text-white px-4 rounded-xl font-bold text-xs">CLAIM</button></div></div>
-        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500"><div class="bg-pink-50 p-4 rounded-xl text-center mb-5 border"><p class="text-[10px] text-pink-600 font-bold italic">Send Money to bKash (Personal):</p><p id="d-bk" class="font-black text-xl text-pink-700 tracking-tighter">Loading...</p><button onclick="copyText('d-bk')" class="bg-pink-600 text-white px-4 py-1 rounded-full text-[10px] mt-2 font-bold shadow-md">COPY</button></div><input type="number" id="amt" placeholder="Amount (৳)" class="w-full border p-4 rounded-2xl mb-3 outline-none"><input type="text" id="trx" placeholder="TrxID" class="w-full border p-4 rounded-2xl mb-5 outline-none"><button onclick="dep()" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold uppercase shadow-lg">Submit Deposit</button></div>
+        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500"><div class="bg-pink-50 p-4 rounded-xl text-center mb-5 border"><p class="text-[10px] text-pink-600 font-bold italic">Send Money (bKash):</p><p id="d-bk" class="font-black text-xl text-pink-700">Loading...</p><button onclick="copyText('d-bk')" class="bg-pink-600 text-white px-4 py-1 rounded-full text-[10px] mt-2 font-bold shadow-md">COPY</button></div><input type="number" id="amt" placeholder="Amount (৳)" class="w-full border p-4 rounded-2xl mb-3 outline-none"><input type="text" id="trx" placeholder="TrxID" class="w-full border p-4 rounded-2xl mb-5 outline-none"><button onclick="dep()" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold uppercase shadow-lg">Submit Deposit</button></div>
     </div>
 
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
@@ -50,43 +50,44 @@
         localStorage.setItem('SN_ID', userId);
 
         const socket = io("https://ludo-pro-engine.onrender.com");
-        let currentRoom = null;
-
+        
         socket.on("connect", () => { document.getElementById('status-msg').innerText = "Online 🟢"; });
         
+        const apiPath = "/.netlify/functions/wallet";
+
         async function init(){
-            document.getElementById('uid').innerText="ID: "+userId; 
-            document.getElementById('my-ref').innerText=userId;
+            document.getElementById('uid').innerText="ID: "+userId; document.getElementById('my-ref').innerText=userId;
             createBoard();
-            await loadBal();
+            loadBal();
             try {
-                const res = await fetch('/.netlify/functions/wallet?type=settings');
+                const res = await fetch(`${apiPath}?type=settings`);
                 const data = await res.json();
-                document.getElementById('d-bk').innerText = data.bikash || "017XXXXXXXX";
-                document.getElementById('wa-link').href = `https://wa.me/${data.wa || '8801700000000'}`;
-            } catch(e) { document.getElementById('d-bk').innerText = "Update in Admin"; }
+                document.getElementById('d-bk').innerText = data.bikash || "Update in Admin";
+            } catch(e) { }
         }
 
         async function loadBal(){
             try {
-                const res = await fetch(`/.netlify/functions/wallet?userId=${userId}`);
+                const res = await fetch(`${apiPath}?userId=${userId}`);
                 const data = await res.json();
                 document.getElementById('balance').innerText = data.balance || 0;
             } catch(e) {}
         }
 
         async function loadLobby(){
-            const res = await fetch('/.netlify/functions/wallet?type=getMatches');
-            const data = await res.json();
-            document.getElementById('match-list').innerHTML = data.length === 0 ? "<p class='text-center text-gray-400 py-10'>No matches found</p>" : 
-            data.map(m => `<div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600"><div><p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase">${m.mode} Player</p></div><button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs">JOIN</button></div>`).join('');
+            try {
+                const res = await fetch(`${apiPath}?type=getMatches`);
+                const data = await res.json();
+                document.getElementById('match-list').innerHTML = data.length === 0 ? "<p class='text-center text-gray-400 py-10'>No matches found</p>" : 
+                data.map(m => `<div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600"><div><p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase">${m.mode} Player</p></div><button class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs">JOIN</button></div>`).join('');
+            } catch(e) {}
         }
 
         async function dep(){
             const amount = document.getElementById('amt').value;
             const trxId = document.getElementById('trx').value;
             if(!amount) return alert("Enter amount");
-            await fetch('/.netlify/functions/wallet', { method: 'POST', body: JSON.stringify({ type: 'deposit', userId, amount, trxId }) });
+            await fetch(apiPath, { method: 'POST', body: JSON.stringify({ type: 'deposit', userId, amount, trxId }) });
             alert("Request Sent!");
         }
 
@@ -94,7 +95,7 @@
             document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab'));
             document.getElementById(id).classList.add('active-tab');
             if(id === 'lobby-tab') loadLobby();
-            if(id === 'wallet-tab') init();
+            if(id === 'wallet-tab') loadBal();
         }
 
         function createBoard(){
