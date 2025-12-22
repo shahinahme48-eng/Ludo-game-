@@ -2,79 +2,92 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Admin</title>
+    <title>Master Admin - SN Ludo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>body{background:#0f172a;color:white;font-family:sans-serif;}.card{background:#1e293b;border-radius:24px;padding:20px;border:1px solid #334155;margin-bottom:20px;}</style>
 </head>
 <body class="p-4" onload="checkPin()">
-    <div id="main" class="hidden max-w-md m-auto">
-        <h1 class="text-blue-500 font-black text-xl italic mb-6 text-center uppercase">Master Control</h1>
+    <div id="main" class="hidden max-w-lg m-auto">
+        <h1 class="text-blue-500 font-black text-xl italic mb-6 uppercase text-center">Master Control</h1>
         
-        <!-- Host Tournament -->
-        <div class="card border-l-8 border-yellow-500 shadow-2xl">
-            <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase">Host Tournament</h3>
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <input type="number" id="fee" placeholder="Fee" class="bg-slate-900 p-3 rounded-xl text-sm outline-none text-white">
-                <input type="number" id="prize" placeholder="Prize" class="bg-slate-900 p-3 rounded-xl text-sm outline-none text-white">
-                <select id="mode" class="bg-slate-900 p-3 rounded-xl text-sm text-white"><option value="2">2 Player</option><option value="4">4 Player</option></select>
-                <input type="text" id="time" placeholder="Time (9:30 PM)" class="bg-slate-900 p-3 rounded-xl text-sm text-white">
+        <!-- Tournament Setup -->
+        <div class="card border-l-8 border-yellow-500">
+            <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase italic">🏆 Host Tournament</h3>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <input type="number" id="fee" placeholder="Entry Fee" class="bg-slate-900 p-3 rounded-xl text-sm outline-none">
+                <input type="number" id="prize" placeholder="Prize" class="bg-slate-900 p-3 rounded-xl text-sm outline-none">
+                <select id="mode" class="bg-slate-900 p-3 rounded-xl text-sm"><option value="2">2 Player</option><option value="4">4 Player</option></select>
+                <input type="text" id="time" placeholder="Time" class="bg-slate-900 p-3 rounded-xl text-sm">
             </div>
-            <button onclick="createMatch()" class="w-full bg-blue-600 py-3 rounded-xl font-bold uppercase text-xs">Publish Match</button>
+            <button onclick="createMatch()" class="w-full bg-yellow-600 text-black py-3 rounded-xl font-bold">PUBLISH MATCH</button>
         </div>
 
-        <!-- Deposit Approvals -->
-        <div class="card border-l-8 border-pink-500 shadow-xl">
-            <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">Deposit Approvals</h3>
-            <div id="list" class="space-y-3"></div>
+        <!-- System Settings (Bikash & Refer Bonus) -->
+        <div class="card border-l-8 border-cyan-500">
+            <h3 class="text-xs font-bold text-cyan-400 mb-4 uppercase">System Settings</h3>
+            <label class="text-[10px] text-gray-400">bKash Number:</label>
+            <input type="text" id="bik" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm">
+            <label class="text-[10px] text-gray-400">WhatsApp helpline:</label>
+            <input type="text" id="wa" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm">
+            <label class="text-[10px] text-gray-400">Refer Bonus Amount (৳):</label>
+            <input type="number" id="set-bonus" placeholder="বন্ধুকে কত টাকা দিবেন?" class="bg-slate-900 p-3 rounded-xl w-full mb-4 text-sm outline-none">
+            <button onclick="updateSet()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save All Settings</button>
         </div>
 
-        <!-- Refer List -->
-        <div class="card border-l-8 border-green-500 shadow-xl">
-            <h3 class="text-xs font-bold text-green-500 mb-4 uppercase italic">Referral List (User Info)</h3>
-            <div id="user-list" class="space-y-2 max-h-40 overflow-y-auto text-[10px]"></div>
+        <!-- Pending Requests -->
+        <div class="card border-l-8 border-pink-500">
+            <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">Deposit Requests</h3>
+            <div id="req-list" class="space-y-3"></div>
         </div>
 
-        <!-- Settings -->
-        <div class="card border-l-8 border-cyan-500 shadow-xl">
-            <h3 class="text-xs font-bold text-cyan-400 mb-4 uppercase">Settings</h3>
-            <input type="text" id="bik" placeholder="bKash Number" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm text-white border-none">
-            <input type="text" id="wa" placeholder="WhatsApp (880...)" class="bg-slate-900 p-3 rounded-xl w-full mb-4 text-sm text-white border-none">
-            <button onclick="updateSet()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save Settings</button>
+        <!-- User List & Referrals -->
+        <div class="card border-l-8 border-green-500">
+            <h3 class="text-xs font-bold text-green-500 mb-4 uppercase">All Users & Referrals</h3>
+            <div id="user-list" class="space-y-2 max-h-60 overflow-y-auto text-[10px]"></div>
         </div>
     </div>
 
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
-        function checkPin(){ if(prompt("PIN:")==="2025") { document.getElementById('main').classList.remove('hidden'); load(); } else alert("Access Denied"); }
+        function checkPin(){ if(prompt("PIN:")==="2025") { document.getElementById('main').classList.remove('hidden'); load(); } else document.body.innerHTML="Access Denied"; }
+        
         async function load(){
             const res = await fetch(`${R_URL}/api/admin/requests`);
             const data = await res.json();
-            document.getElementById('list').innerHTML = data.map(r => `
-                <div class="bg-slate-800 p-4 rounded-2xl flex justify-between items-center shadow border border-slate-700">
-                    <div><p class="font-bold">৳${r.amount}</p><p class="text-[9px] uppercase text-blue-400 font-bold">${r.userId}</p></div>
+            document.getElementById('req-list').innerHTML = data.map(r => `
+                <div class="bg-slate-950 p-4 rounded-xl flex justify-between items-center border border-slate-700">
+                    <div><p class="font-bold">৳${r.amount}</p><p class="text-[9px] text-blue-400 uppercase">${r.userId}</p></div>
                     <div class="flex gap-2">
-                        <button onclick="handle('${r._id}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-[10px] font-bold">Approve</button>
-                        <button onclick="handle('${r._id}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-[10px] font-bold">Reject</button>
+                        <button onclick="handle('${r._id}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-[10px]">Approve</button>
+                        <button onclick="handle('${r._id}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-[10px]">Reject</button>
                     </div>
                 </div>
             `).join('');
 
             const uRes = await fetch(`${R_URL}/api/admin/users`);
             const uData = await uRes.json();
-            document.getElementById('user-list').innerHTML = uData.map(u => `<div class="flex justify-between border-b border-slate-700 py-1"><span>${u.userId}</span><span class="text-yellow-500">Refers: ${u.referCount}</span><span class="text-green-500">৳${u.balance}</span></div>`).join('');
+            document.getElementById('user-list').innerHTML = uData.map(u => `
+                <div class="flex justify-between border-b border-slate-700 py-1">
+                    <span>${u.userId}</span>
+                    <span class="text-yellow-500 font-bold">Refers: ${u.referCount}</span>
+                    <span class="text-green-500">৳${u.balance}</span>
+                </div>
+            `).join('');
 
             const sRes = await fetch(`${R_URL}/api/settings`);
             const sData = await sRes.json();
             document.getElementById('bik').value = sData.bikash || "";
             document.getElementById('wa').value = sData.wa || "";
+            document.getElementById('set-bonus').value = sData.referBonus || 10;
         }
-        async function handle(id, action){ await fetch(`${R_URL}/api/admin/handleRequest`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id, action})}); alert("Success!"); load(); }
+
+        async function handle(id, action){ await fetch(`${R_URL}/api/admin/handleRequest`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id, action})}); alert(action.toUpperCase()); load(); }
         async function createMatch(){
             const fee=document.getElementById('fee').value; const prize=document.getElementById('prize').value; const mode=document.getElementById('mode').value; const time=document.getElementById('time').value;
             await fetch(`${R_URL}/api/createMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entryFee:fee, prize, mode, startTime:time})});
-            alert("Match Created!"); load();
+            alert("Tournament Live!"); load();
         }
-        async function updateSet(){ await fetch(`${R_URL}/api/updateSettings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bikash:document.getElementById('bik').value, wa:document.getElementById('wa').value})}); alert("Saved!"); }
+        async function updateSet(){ await fetch(`${R_URL}/api/updateSettings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bikash:document.getElementById('bik').value, wa:document.getElementById('wa').value, referBonus:document.getElementById('set-bonus').value})}); alert("Saved!"); }
     </script>
 </body>
 </html>
