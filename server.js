@@ -25,7 +25,6 @@ async function run() {
     // --- User & Refer Data ---
     app.get("/api/admin/users", async (req, res) => {
         const allUsers = await users.find().toArray();
-        // প্রতি ইউজারের জন্য রেফারেল সংখ্যা বের করা
         const userList = await Promise.all(allUsers.map(async (u) => {
             const count = await users.countDocuments({ referredBy: u.userId });
             return { userId: u.userId, balance: u.balance, referCount: count };
@@ -35,7 +34,7 @@ async function run() {
 
     app.get("/api/balance", async (req, res) => {
         const user = await users.findOne({ userId: req.query.userId });
-        res.json({ balance: user ? user.balance : 0 });
+        res.json({ balance: user ? user.balance : 0, referClaimed: user ? user.referClaimed : false });
     });
 
     // --- Tournament Lobby ---
@@ -64,7 +63,6 @@ async function run() {
         const { id, action } = req.body;
         const request = await transactions.findOne({ _id: new ObjectId(id) });
         if (!request) return res.status(404).send("Not found");
-
         if (action === "approve") {
             await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "approved" } });
             await users.updateOne({ userId: request.userId }, { $inc: { balance: parseInt(request.amount) } }, { upsert: true });
@@ -74,14 +72,19 @@ async function run() {
         res.json({ success: true });
     });
 
-    // Settings
     app.get("/api/settings", async (req, res) => {
         const data = await settings.findOne({ id: "config" });
-        res.json(data || { bikash: "017XXXXXXXX", wa: "8801700000000" });
+        res.json(data || { bikash: "017XXXXXXXX", wa: "8801700000000", referBonus: 10 });
     });
+
     app.post("/api/updateSettings", async (req, res) => {
         await settings.updateOne({ id: "config" }, { $set: req.body }, { upsert: true });
         res.json({ success: true });
+    });
+
+    io.on("connection", (socket) => {
+        socket.on("joinRoom", (roomId) => socket.join(roomId));
+        socket.on("rollDice", (data) => io.to(data.roomId).emit("diceRolled", data));
     });
 
     server.listen(process.env.PORT || 3000);
