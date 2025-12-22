@@ -2,187 +2,119 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Royal Pro</title>
+    <title>Ludo Cash Royal</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
         body { background: #f3f4f6; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-        
-        /* লুদু বোর্ড ফিক্সড গ্রিড */
-        #board { 
-            display: grid; 
-            grid-template-columns: repeat(15, 1fr); 
-            grid-template-rows: repeat(15, 1fr);
-            width: 94vw; height: 94vw; max-width: 420px; max-height: 420px; 
-            margin: auto; background: #fff; border: 5px solid #333; 
-            border-radius: 8px; overflow: hidden; position: relative;
-        }
+        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 420px; margin: auto; background: #fff; border: 4px solid #333; border-radius: 8px; overflow: hidden; }
         .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
-        .red { background-color: var(--red); } .green { background-color: var(--green); }
-        .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        
-        /* গুটি ডিজাইন */
-        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; }
-        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); }
-        .p-green { background: radial-gradient(circle, #58d68d, #1d8348); }
-        .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); }
-        .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
-
+        .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
+        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); position: absolute; z-index: 10; }
+        .p-red { background: radial-gradient(circle at 30% 30%, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle at 30% 30%, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle at 30% 30%, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle at 30% 30%, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
     </style>
 </head>
 <body class="pb-24">
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
-        if(!localStorage.getItem('L_ID')) localStorage.setItem('L_ID', "SN" + Math.floor(1000 + Math.random() * 9000));
-        const userId = localStorage.getItem('L_ID');
+        const userId = localStorage.getItem('LUDO_PRO_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('LUDO_PRO_ID', userId);
         const socket = io(R_URL);
 
-        // ১. বোর্ড তৈরি (সবার আগে চলবে)
-        function createBoard() {
-            const b = document.getElementById('board');
-            if(!b) return;
-            b.innerHTML = "";
-            for(let i=0; i<225; i++) {
-                let r=Math.floor(i/15), c=i%15, d=document.createElement('div');
-                d.className='cell'; d.id = `c-${r}-${c}`;
-                if(r<6&&c<6) d.classList.add('green'); else if(r<6&&c>8) d.classList.add('yellow');
-                else if(r>8&&c<6) d.classList.add('red'); else if(r>8&&c>8) d.classList.add('blue');
-                b.appendChild(d);
-            }
-            const addP = (r,c,cl) => { 
-                const p=document.createElement('div'); p.className=`piece p-${cl}`; 
-                document.getElementById(`c-${r}-${c}`).appendChild(p);
-            };
-            addP(1,1,'green'); addP(1,4,'green'); addP(4,1,'green'); addP(4,4,'green');
-            addP(1,10,'yellow'); addP(1,13,'yellow'); addP(4,10,'yellow'); addP(4,13,'yellow');
-            addP(10,1,'red'); addP(10,4,'red'); addP(13,1,'red'); addP(13,4,'red');
-            addP(10,10,'blue'); addP(10,13,'blue'); addP(13,10,'blue'); addP(13,13,'blue');
+        async function loadBal(){
+            const res = await fetch(`${R_URL}/api/balance?userId=${userId}`);
+            const data = await res.json();
+            document.getElementById('balance').innerText = data.balance || 0;
         }
 
-        // ২. ডাটা লোড করা
-        async function init() {
+        async function init(){
             createBoard();
             document.getElementById('uid').innerText = userId;
-            document.getElementById('my-ref').innerText = userId;
+            document.getElementById('my-ref-display').innerText = userId;
             loadBal();
-            try {
-                const res = await fetch(`${R_URL}/api/settings`);
-                const data = await res.json();
-                document.getElementById('d-bk').innerText = data.bikash || "017XXXXXXXX";
-                document.getElementById('wa-btn').href = `https://wa.me/${data.wa}?text=ID:${userId}`;
-            } catch(e) {}
+            const res = await fetch(`${R_URL}/api/settings`);
+            const data = await res.json();
+            document.getElementById('d-bk').innerText = data.bikash || "Update in Admin";
+            document.getElementById('wa-link').href = `https://wa.me/${data.wa}`;
             socket.on("connect", () => { document.getElementById('status').innerText = "ONLINE 🟢"; });
         }
 
-        async function loadBal() {
-            try {
-                const res = await fetch(`${R_URL}/api/balance?userId=${userId}`);
-                const data = await res.json();
-                document.getElementById('balance').innerText = data.balance || 0;
-            } catch(e) {}
-        }
-
-        // ৩. টাকা জমা দেওয়া (Proof সহ)
-        async function dep() {
-            const amount = document.getElementById('amt').value;
-            const trxId = document.getElementById('trx').value;
-            if(!amount || !trxId) return alert("টাকার পরিমাণ এবং TrxID দিন!");
-            await fetch(`${R_URL}/api/deposit`, { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ userId, amount, trxId, type: 'deposit' }) 
-            });
-            alert("অনুরোধ পাঠানো হয়েছে! অ্যাডমিন চেক করে টাকা যোগ করবে।");
-            document.getElementById('amt').value = ""; document.getElementById('trx').value = "";
-        }
-
-        // ৪. রেফার বোনাস ক্লেইম
-        async function claimRefer() {
-            const referCode = document.getElementById('ref-input').value;
-            if(!referCode) return alert("বন্ধুর রেফার কোড দিন");
-            const res = await fetch(`${R_URL}/api/claimRefer`, { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ userId, referCode }) 
-            });
-            if(res.ok) { alert("বোনাস সফলভাবে যোগ হয়েছে!"); loadBal(); }
-            else { const d = await res.json(); alert(d.error); }
-        }
-
-        function showTab(id) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
-            document.getElementById(id).classList.add('active-tab');
-            if(id === 'lobby-tab') loadLobby();
-        }
-
-        async function loadLobby() {
+        async function loadLobby(){
             const res = await fetch(`${R_URL}/api/getMatches`);
             const data = await res.json();
-            document.getElementById('match-list').innerHTML = data.map(m => `
+            const div = document.getElementById('match-list');
+            div.innerHTML = data.length === 0 ? "<p class='text-center py-20 text-gray-400'>No matches found</p>" : 
+            data.map(m => `
                 <div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3">
-                    <div><p class="font-black text-gray-800">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase">${m.mode} Players</p></div>
-                    <button class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs">JOIN (৳${m.entryFee})</button>
+                    <div>
+                        <p class="font-black text-gray-800 text-lg">Prize: ৳${m.prize}</p>
+                        <p class="text-[9px] font-bold text-blue-600 uppercase">${m.mode} Players | ${m.startTime}</p>
+                    </div>
+                    <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs">JOIN (৳${m.entryFee})</button>
                 </div>
             `).join('');
         }
 
-        function rollDice() { const v = Math.floor(Math.random() * 6) + 1; document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v]; }
-        function copyNum() { navigator.clipboard.writeText(document.getElementById('d-bk').innerText); alert("বিকাশ নাম্বার কপি হয়েছে!"); }
+        async function joinMatch(id) {
+            const res = await fetch(`${R_URL}/api/joinMatch`, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ matchId: id, userId }) 
+            });
+            if(res.ok) { alert("Successfully joined tournament!"); loadBal(); loadLobby(); }
+            else { const err = await res.json(); alert(err.error); }
+        }
 
-        window.onload = init;
+        // ... (অন্যান্য আগের ফাংশনগুলো অপরিবর্তিত থাকবে)
+        function showTab(id){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab')); document.getElementById(id).classList.add('active-tab'); if(id==='lobby-tab') loadLobby(); }
+        function createBoard(){
+            const b = document.getElementById('board'); b.innerHTML = "";
+            for(let i=0; i<225; i++) {
+                let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell'; d.id=`c-${r}-${c}`;
+                if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow'); else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
+                b.appendChild(d);
+            }
+            const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);};
+            addP(1,1,'green'); addP(1,4,'green'); addP(4,1,'green'); addP(4,4,'green'); addP(1,10,'yellow'); addP(1,13,'yellow'); addP(4,10,'yellow'); addP(4,13,'yellow');
+            addP(10,1,'red'); addP(10,4,'red'); addP(13,1,'red'); addP(13,4,'red'); addP(10,10,'blue'); addP(10,13,'blue'); addP(13,10,'blue'); addP(13,13,'blue');
+        }
+        async function dep(){ const amount = document.getElementById('amt').value; const trxId = document.getElementById('trx').value; await fetch(`${R_URL}/api/deposit`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, amount, trxId, type: 'deposit' }) }); alert("Sent!"); }
+        async function claimRefer(){ const referCode = document.getElementById('ref-input').value; const res = await fetch(`${R_URL}/api/claimRefer`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, referCode }) }); if(res.ok) { alert("Bonus Received!"); loadBal(); } else alert("Invalid Code"); }
+        function roll() { document.getElementById('d-btn').innerText = ["⚀","⚁","⚂","⚃","⚄","⚅"][Math.floor(Math.random()*6)]; }
+        function copyNum() { navigator.clipboard.writeText(document.getElementById('d-bk').innerText); alert("Copied!"); }
+        init();
     </script>
 
     <!-- Header -->
     <div class="bg-blue-600 text-white p-4 flex justify-between shadow-lg sticky top-0 z-50">
-        <div><h1 class="font-bold text-sm uppercase italic">Ludo Royal</h1><p class="text-[8px] bg-blue-800 px-2 rounded-full w-fit">ID: <span id="uid">...</span></p></div>
-        <p class="font-bold text-yellow-300">৳ <span id="balance">0</span></p>
+        <div><h1 class="font-bold text-sm uppercase italic">Ludo Royal</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5 tracking-widest">...</p></div>
+        <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
     </div>
 
-    <!-- Play Tab -->
+    <!-- UI Tabs (Play, Lobby, Wallet) -->
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
-        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4">
-            <button onclick="rollDice()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl flex items-center justify-center">🎲</button>
+        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4 border">
+            <button onclick="roll()" id="d-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl">🎲</button>
             <div id="status" class="text-[10px] font-bold text-blue-600 uppercase italic">CONNECTING...</div>
-            <button onclick="alert('Join Tournament for Live Chat!')" class="w-10 h-10 rounded-full bg-gray-100 text-xl">💬</button>
+            <button onclick="alert('Join match to chat!')" class="w-10 h-10 rounded-full bg-gray-100 text-xl">💬</button>
         </div>
     </div>
 
-    <!-- Lobby Tab -->
     <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
 
-    <!-- Wallet Tab -->
     <div id="wallet-tab" class="tab-content p-4 space-y-4">
-        <!-- বন্ধু আমন্ত্রণ উপহার -->
-        <div class="bg-gradient-to-r from-orange-400 to-yellow-500 p-5 rounded-3xl text-white shadow-lg">
-            <h3 class="font-bold">🎁 বন্ধু আমন্ত্রণ উপহার</h3>
-            <p class="text-[10px] mb-2 opacity-90 font-bold">আমার কোড: <span id="my-ref" class="font-black text-white ml-1">...</span></p>
-            <div class="flex gap-2">
-                <input type="text" id="ref-input" placeholder="বন্ধুর রেফার কোড দিন" class="flex-1 p-2 rounded-xl text-black text-xs outline-none">
-                <button onclick="claimRefer()" class="bg-black text-white px-4 rounded-xl font-bold text-[10px]">CLAIM</button>
-            </div>
-        </div>
-
-        <!-- টাকা জমার কার্ড -->
-        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500 text-center">
-            <div class="bg-pink-50 p-4 rounded-xl mb-4 border cursor-pointer" onclick="copyNum()">
-                <p class="text-[9px] text-pink-600 font-bold uppercase italic">Tap to Copy bKash Number:</p>
-                <p id="d-bk" class="font-black text-xl text-pink-700 tracking-tighter italic">Loading...</p>
-            </div>
-            <input type="number" id="amt" placeholder="টাকার পরিমাণ (৳)" class="w-full border p-3 rounded-xl mb-2 outline-none">
-            <input type="text" id="trx" placeholder="বিকাশ TrxID দিন" class="w-full border p-3 rounded-xl mb-4 outline-none">
-            <button onclick="dep()" class="w-full bg-pink-600 text-white py-3 rounded-xl font-bold uppercase shadow-lg">Submit Request</button>
-        </div>
-        <a href="#" id="wa-link" target="_blank" class="block bg-green-500 text-white p-4 rounded-2xl text-center font-bold">WhatsApp Support</a>
+        <div class="bg-gradient-to-r from-orange-400 to-yellow-500 p-5 rounded-3xl text-white shadow-lg"><p class="text-[9px] uppercase font-bold">Refer Code:</p><p id="my-ref-display" class="font-black text-xl mb-3">...</p><div class="flex gap-2"><input type="text" id="ref-input" placeholder="Friend Code" class="flex-1 p-2 rounded-xl text-black text-sm outline-none"><button onclick="claimRefer()" class="bg-black text-white px-4 rounded-xl font-bold text-xs">CLAIM</button></div></div>
+        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500 text-center"><div class="bg-pink-50 p-4 rounded-xl mb-4 border cursor-pointer" onclick="copyNum()"><p id="d-bk" class="font-black text-xl text-pink-700">Loading...</p><p class="text-[8px] text-pink-500 uppercase">Tap to copy</p></div><input type="number" id="amt" placeholder="৳ Amount" class="w-full border p-3 rounded-xl mb-2 outline-none"><input type="text" id="trx" placeholder="TrxID" class="w-full border p-3 rounded-xl mb-4 outline-none"><button onclick="dep()" class="w-full bg-pink-600 text-white py-3 rounded-xl font-bold uppercase">Submit Deposit</button></div>
+        <a href="#" id="wa-link" target="_blank" class="block bg-green-500 text-white p-4 rounded-2xl text-center font-bold">WhatsApp Help</a>
     </div>
 
-    <!-- Bottom Nav -->
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
         <button onclick="showTab('game-tab')" class="font-bold text-[10px]">PLAY</button>
         <button onclick="showTab('lobby-tab')" class="font-bold text-[10px]">LOBBY</button>
         <button onclick="showTab('wallet-tab')" class="font-bold text-[10px]">WALLET</button>
     </div>
 </body>
-            </html>
+</html>
