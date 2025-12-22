@@ -2,73 +2,77 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Cash Royal</title>
+    <title>Ludo Multiplayer</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
-        body { background: #f1f5f9; font-family: sans-serif; }
+        body { background: #f3f4f6; font-family: sans-serif; }
         #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 420px; margin: auto; background: #fff; border: 5px solid #333; border-radius: 8px; overflow: hidden; }
         .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
         .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); position: absolute; z-index: 10; }
+        .piece { width: 70%; height: 70%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; }
         .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
     </style>
 </head>
 <body class="pb-24">
     <div class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
-        <div><h1 class="font-bold text-sm">LUDO MULTIPLAYER</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5">...</p></div>
+        <div><h1 class="font-bold text-sm uppercase">Ludo Multiplayer</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5 tracking-wider">...</p></div>
         <div class="text-right"><p class="text-[9px] font-bold opacity-80 uppercase">Wallet</p><p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p></div>
     </div>
 
-    <!-- Tab 1: Game -->
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="board" class="mt-4 shadow-xl"></div>
         <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow-sm mx-4">
             <button onclick="roll()" id="d-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl">🎲</button>
             <div id="status-msg" class="text-[10px] font-bold text-blue-600 uppercase">Connecting...</div>
-            <button onclick="alert('Join match to chat!')" class="w-10 h-10 rounded-full bg-gray-100 text-xl">💬</button>
+            <button onclick="alert('Join a match to enable chat!')" class="w-10 h-10 rounded-full bg-gray-100 text-xl">💬</button>
         </div>
     </div>
 
-    <!-- Tab 2: Lobby -->
-    <div id="lobby-tab" class="tab-content p-4"><h2 class="font-black text-center mb-6 uppercase text-sm">🏆 Lobby</h2><div id="match-list" class="space-y-4"></div></div>
+    <div id="lobby-tab" class="tab-content p-4"><h2 class="font-black text-center mb-6 uppercase text-sm">Tournament Lobby</h2><div id="match-list" class="space-y-4"></div></div>
 
-    <!-- Tab 3: Wallet -->
     <div id="wallet-tab" class="tab-content p-4 space-y-4">
-        <div class="bg-gradient-to-r from-orange-400 to-yellow-500 p-5 rounded-3xl text-white shadow-lg"><p class="text-[9px] uppercase font-bold">Refer Code:</p><p id="my-ref" class="font-black text-xl mb-3">...</p><div id="ref-box" class="flex gap-2"><input type="text" id="in-ref" placeholder="Friend Code" class="flex-1 p-2 rounded-xl text-black text-sm outline-none"><button onclick="claim()" class="bg-black text-white px-4 rounded-xl font-bold text-xs">CLAIM</button></div></div>
-        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500"><div class="bg-pink-50 p-4 rounded-xl text-center mb-5 border"><p class="text-[10px] text-pink-600 font-bold italic">Send Money (bKash):</p><p id="d-bk" class="font-black text-xl text-pink-700">Loading...</p><button onclick="copyText('d-bk')" class="bg-pink-600 text-white px-4 py-1 rounded-full text-[10px] mt-2 font-bold shadow-md">COPY</button></div><input type="number" id="amt" placeholder="Amount (৳)" class="w-full border p-4 rounded-2xl mb-3 outline-none"><input type="text" id="trx" placeholder="TrxID" class="w-full border p-4 rounded-2xl mb-5 outline-none"><button onclick="dep()" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold uppercase shadow-lg">Submit Deposit</button></div>
+        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500">
+            <div class="bg-pink-50 p-4 rounded-xl text-center mb-5 border"><p class="text-[10px] text-pink-600 font-bold uppercase">Send Money to bKash (Personal):</p><p id="d-bk" class="font-black text-xl text-pink-700 tracking-tighter">Loading...</p><button onclick="copyNum()" class="bg-pink-600 text-white px-4 py-1 rounded-full text-[10px] mt-2 font-bold shadow-md">COPY</button></div>
+            <input type="number" id="amt" placeholder="Amount (৳)" class="w-full border p-4 rounded-2xl mb-3 outline-none"><input type="text" id="trx" placeholder="TrxID" class="w-full border p-4 rounded-2xl mb-5 outline-none">
+            <button onclick="dep()" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold shadow-lg">SUBMIT DEPOSIT</button>
+        </div>
+        <a href="#" id="wa" target="_blank" class="block bg-green-500 text-white p-4 rounded-2xl text-center font-bold shadow-lg">Help Line (WhatsApp)</a>
     </div>
 
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
-        <button onclick="showTab('game-tab')" class="font-bold text-xs">PLAY</button><button onclick="showTab('lobby-tab')" class="font-bold text-xs">LOBBY</button><button onclick="showTab('wallet-tab')" class="font-bold text-xs">WALLET</button>
+        <button onclick="showTab('game-tab')" class="font-bold text-xs uppercase">Play</button><button onclick="showTab('lobby-tab')" class="font-bold text-xs uppercase">Lobby</button><button onclick="showTab('wallet-tab')" class="font-bold text-xs uppercase">Wallet</button>
     </div>
 
     <script>
-        const userId = localStorage.getItem('SN_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('SN_ID', userId);
+        // ইউজার আইডি ফিক্স করার লজিক
+        if (!localStorage.getItem('LUDO_USER_ID')) {
+            localStorage.setItem('LUDO_USER_ID', "SN" + Math.floor(1000 + Math.random() * 9000));
+        }
+        const userId = localStorage.getItem('LUDO_USER_ID');
 
+        // মাল্টিপ্লেয়ার সার্ভার কানেকশন (Render)
         const socket = io("https://ludo-pro-engine.onrender.com");
-        
         socket.on("connect", () => { document.getElementById('status-msg').innerText = "Online 🟢"; });
-        
-        const apiPath = "/.netlify/functions/wallet";
 
         async function init(){
-            document.getElementById('uid').innerText="ID: "+userId; document.getElementById('my-ref').innerText=userId;
+            document.getElementById('uid').innerText = "ID: " + userId;
             createBoard();
             loadBal();
+            // ডাটাবেস থেকে সেটিংস আনা
             try {
-                const res = await fetch(`${apiPath}?type=settings`);
+                const res = await fetch('/.netlify/functions/wallet?type=settings');
                 const data = await res.json();
-                document.getElementById('d-bk').innerText = data.bikash || "Update in Admin";
-            } catch(e) { }
+                document.getElementById('d-bk').innerText = data.bikash || "017XXXXXXXX";
+                document.getElementById('wa').href = `https://wa.me/${data.wa || '8801700000000'}?text=ID:${userId}`;
+            } catch(e) { console.log("DB Load Error"); }
         }
 
         async function loadBal(){
             try {
-                const res = await fetch(`${apiPath}?userId=${userId}`);
+                const res = await fetch(`/.netlify/functions/wallet?userId=${userId}`);
                 const data = await res.json();
                 document.getElementById('balance').innerText = data.balance || 0;
             } catch(e) {}
@@ -76,26 +80,27 @@
 
         async function loadLobby(){
             try {
-                const res = await fetch(`${apiPath}?type=getMatches`);
+                const res = await fetch('/.netlify/functions/wallet?type=getMatches');
                 const data = await res.json();
-                document.getElementById('match-list').innerHTML = data.length === 0 ? "<p class='text-center text-gray-400 py-10'>No matches found</p>" : 
-                data.map(m => `<div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600"><div><p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase">${m.mode} Player</p></div><button class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs">JOIN</button></div>`).join('');
+                document.getElementById('match-list').innerHTML = data.length === 0 ? "<p class='text-center text-gray-400 py-10 uppercase'>No Active matches</p>" : 
+                data.map(m => `<div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600"><div><p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase">${m.mode} Players</p></div><button class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase">Join Match</button></div>`).join('');
             } catch(e) {}
         }
 
         async function dep(){
             const amount = document.getElementById('amt').value;
             const trxId = document.getElementById('trx').value;
-            if(!amount) return alert("Enter amount");
-            await fetch(apiPath, { method: 'POST', body: JSON.stringify({ type: 'deposit', userId, amount, trxId }) });
-            alert("Request Sent!");
+            if(!amount || !trxId) return alert("Fill all info!");
+            await fetch('/.netlify/functions/wallet', { method: 'POST', body: JSON.stringify({ type: 'deposit', userId, amount, trxId }) });
+            alert("Request Sent Successfully!");
+            document.getElementById('amt').value = ""; document.getElementById('trx').value = "";
         }
 
         function showTab(id){
             document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab'));
             document.getElementById(id).classList.add('active-tab');
             if(id === 'lobby-tab') loadLobby();
-            if(id === 'wallet-tab') loadBal();
+            if(id === 'game-tab') loadBal();
         }
 
         function createBoard(){
@@ -105,6 +110,7 @@
                 if(r<6&&c<6)d.classList.add('red'); else if(r<6&&c>8)d.classList.add('green'); else if(r>8&&c<6)d.classList.add('yellow'); else if(r>8&&c>8)d.classList.add('blue');
                 b.appendChild(d);
             }
+            // গুটি বসানো
             const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);};
             addP(1,1,'red'); addP(1,4,'red'); addP(4,1,'red'); addP(4,4,'red');
             addP(1,10,'green'); addP(1,13,'green'); addP(4,10,'green'); addP(4,13,'green');
@@ -117,8 +123,11 @@
             document.getElementById('d-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v];
         }
 
-        function copyText(id) { navigator.clipboard.writeText(document.getElementById(id).innerText); alert("Copied!"); }
-        
+        function copyNum() {
+            const n = document.getElementById('d-bk').innerText;
+            navigator.clipboard.writeText(n); alert("Copied!");
+        }
+
         init();
     </script>
 </body>
