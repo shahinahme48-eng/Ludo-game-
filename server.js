@@ -14,7 +14,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri);
 
-async function startServer() {
+async function run() {
     await client.connect();
     const db = client.db("ludocash");
     const users = db.collection("users");
@@ -22,7 +22,7 @@ async function startServer() {
     const transactions = db.collection("transactions");
     const matches = db.collection("matches");
 
-    // --- API Routes ---
+    // Settings API
     app.get("/api/settings", async (req, res) => {
         const data = await settings.findOne({ id: "config" });
         res.json(data || { bikash: "017XXXXXXXX", wa: "8801700000000", referBonus: 10 });
@@ -43,29 +43,6 @@ async function startServer() {
         res.json({ success: true });
     });
 
-    app.post("/api/claimRefer", async (req, res) => {
-        const { userId, referCode } = req.body;
-        const user = await users.findOne({ userId });
-        if (user && user.referClaimed) return res.status(400).json({ error: "Already claimed" });
-        const referrer = await users.findOne({ userId: referCode });
-        if (!referrer || userId === referCode) return res.status(400).json({ error: "Invalid code" });
-        const config = await settings.findOne({ id: "config" });
-        const bonus = config ? parseInt(config.referBonus) : 10;
-        await users.updateOne({ userId: referCode }, { $inc: { balance: bonus } });
-        await users.updateOne({ userId }, { $inc: { balance: bonus }, $set: { referClaimed: true } }, { upsert: true });
-        res.json({ success: true, bonus });
-    });
-
-    app.get("/api/getMatches", async (req, res) => {
-        const list = await matches.find({ status: "open" }).toArray();
-        res.json(list);
-    });
-
-    app.post("/api/createMatch", async (req, res) => {
-        await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
-        res.json({ success: true });
-    });
-
     app.get("/api/admin/requests", async (req, res) => {
         const list = await transactions.find({ status: "pending" }).toArray();
         res.json(list);
@@ -80,13 +57,13 @@ async function startServer() {
         res.json({ success: true });
     });
 
-    // --- Socket.io ---
+    // Multiplayer Logic
     io.on("connection", (socket) => {
         socket.on("joinRoom", (roomId) => socket.join(roomId));
         socket.on("rollDice", (data) => io.to(data.roomId).emit("diceRolled", data));
+        socket.on("movePiece", (data) => socket.to(data.roomId).emit("pieceMoved", data));
     });
 
-    const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => console.log("Server running"));
+    server.listen(process.env.PORT || 3000, () => console.log("Server Live"));
 }
-startServer();
+run();
