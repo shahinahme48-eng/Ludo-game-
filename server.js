@@ -5,9 +5,7 @@ const { MongoClient, ObjectId } = require("mongodb");
 const cors = require("cors");
 
 const app = express();
-
-// এটি আপনার সব ধরনের কানেকশন এরর দূর করবে
-app.use(cors({ origin: "*" }));
+app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
@@ -16,59 +14,76 @@ const io = new Server(server, { cors: { origin: "*" } });
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri);
 
-async function start() {
-    try {
-        await client.connect();
-        const db = client.db("ludocash");
-        const users = db.collection("users");
-        const settings = db.collection("settings");
-        const transactions = db.collection("transactions");
-        const matches = db.collection("matches");
+async function run() {
+    await client.connect();
+    const db = client.db("ludocash");
+    const users = db.collection("users");
+    const settings = db.collection("settings");
+    const transactions = db.collection("transactions");
+    const matches = db.collection("matches");
 
-        // Settings API
-        app.get("/api/settings", async (req, res) => {
-            const data = await settings.findOne({ id: "config" });
-            res.json(data || { bikash: "017XXXXXXXX", wa: "8801700000000", referBonus: 10 });
-        });
+    // --- User & Refer Data ---
+    app.get("/api/admin/users", async (req, res) => {
+        const allUsers = await users.find().toArray();
+        // প্রতি ইউজারের জন্য রেফারেল সংখ্যা বের করা
+        const userList = await Promise.all(allUsers.map(async (u) => {
+            const count = await users.countDocuments({ referredBy: u.userId });
+            return { userId: u.userId, balance: u.balance, referCount: count };
+        }));
+        res.json(userList);
+    });
 
-        app.post("/api/updateSettings", async (req, res) => {
-            await settings.updateOne({ id: "config" }, { $set: req.body }, { upsert: true });
-            res.json({ success: true });
-        });
+    app.get("/api/balance", async (req, res) => {
+        const user = await users.findOne({ userId: req.query.userId });
+        res.json({ balance: user ? user.balance : 0 });
+    });
 
-        // Balance API
-        app.get("/api/balance", async (req, res) => {
-            const user = await users.findOne({ userId: req.query.userId });
-            res.json({ balance: user ? user.balance : 0, referClaimed: user ? user.referClaimed : false });
-        });
+    // --- Tournament Lobby ---
+    app.get("/api/getMatches", async (req, res) => {
+        const list = await matches.find({ status: "open" }).toArray();
+        res.json(list);
+    });
 
-        // Deposit API
-        app.post("/api/deposit", async (req, res) => {
-            await transactions.insertOne({ ...req.body, status: "pending", date: new Date() });
-            res.json({ success: true });
-        });
+    app.post("/api/createMatch", async (req, res) => {
+        await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
+        res.json({ success: true });
+    });
 
-        // Admin API
-        app.get("/api/admin/requests", async (req, res) => {
-            const list = await transactions.find({ status: "pending" }).toArray();
-            res.json(list);
-        });
+    // --- Payments (Approve/Reject) ---
+    app.post("/api/deposit", async (req, res) => {
+        await transactions.insertOne({ ...req.body, status: "pending", date: new Date() });
+        res.json({ success: true });
+    });
 
-        app.post("/api/admin/approve", async (req, res) => {
-            const request = await transactions.findOne({ _id: new ObjectId(req.body.id) });
-            if (request) {
-                await transactions.updateOne({ _id: new ObjectId(req.body.id) }, { $set: { status: "approved" } });
-                await users.updateOne({ userId: request.userId }, { $inc: { balance: parseInt(request.amount) } }, { upsert: true });
-            }
-            res.json({ success: true });
-        });
+    app.get("/api/admin/requests", async (req, res) => {
+        const list = await transactions.find({ status: "pending" }).toArray();
+        res.json(list);
+    });
 
-        io.on("connection", (socket) => {
-            socket.on("joinRoom", (roomId) => socket.join(roomId));
-            socket.on("rollDice", (data) => io.to(data.roomId).emit("diceRolled", data));
-        });
+    app.post("/api/admin/handleRequest", async (req, res) => {
+        const { id, action } = req.body;
+        const request = await transactions.findOne({ _id: new ObjectId(id) });
+        if (!request) return res.status(404).send("Not found");
 
-        server.listen(process.env.PORT || 3000, () => console.log("Server Running"));
-    } catch (e) { console.error(e); }
+        if (action === "approve") {
+            await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "approved" } });
+            await users.updateOne({ userId: request.userId }, { $inc: { balance: parseInt(request.amount) } }, { upsert: true });
+        } else {
+            await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "rejected" } });
+        }
+        res.json({ success: true });
+    });
+
+    // Settings
+    app.get("/api/settings", async (req, res) => {
+        const data = await settings.findOne({ id: "config" });
+        res.json(data || { bikash: "017XXXXXXXX", wa: "8801700000000" });
+    });
+    app.post("/api/updateSettings", async (req, res) => {
+        await settings.updateOne({ id: "config" }, { $set: req.body }, { upsert: true });
+        res.json({ success: true });
+    });
+
+    server.listen(process.env.PORT || 3000);
 }
-start();
+run();
