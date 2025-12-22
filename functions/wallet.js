@@ -14,50 +14,54 @@ async function connectToDatabase() {
 
 exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
+    const db = await connectToDatabase();
+    const transactions = db.collection('transactions');
+    const users = db.collection('users');
+    const settings = db.collection('settings');
+    const matches = db.collection('matches');
+
+    const method = event.httpMethod;
+    const query = event.queryStringParameters;
+    const body = event.body ? JSON.parse(event.body) : {};
+
     try {
-        const db = await connectToDatabase();
-        const transactions = db.collection('transactions');
-        const users = db.collection('users');
-        const settings = db.collection('settings');
-        const matches = db.collection('matches');
-
-        const method = event.httpMethod;
-        const query = event.queryStringParameters;
-        const body = event.body ? JSON.parse(event.body) : {};
-
-        // ১. সেটিংস গেট ও আপডেট
+        // ১. সেটিংস লোড
         if (method === 'GET' && query.type === 'settings') {
             const data = await settings.findOne({ id: 'config' });
-            return { statusCode: 200, body: JSON.stringify(data || { bikash: '017XXXXXXXX', wa: '8801700000000', referBonus: 10 }) };
+            return { statusCode: 200, body: JSON.stringify(data || { bikash: 'নাম্বার দিন', wa: '8801700000000' }) };
         }
+
+        // ২. সেটিংস আপডেট (অ্যাডমিন থেকে)
         if (method === 'POST' && body.type === 'updateSettings') {
-            await settings.updateOne({ id: 'config' }, { $set: { bikash: body.bikash, wa: body.wa, referBonus: parseInt(body.referBonus) } }, { upsert: true });
+            await settings.updateOne({ id: 'config' }, { $set: { bikash: body.bikash, wa: body.wa } }, { upsert: true });
             return { statusCode: 200, body: JSON.stringify({ success: true }) };
         }
 
-        // ২. ব্যালেন্স এবং রেফার চেক
+        // ৩. ব্যালেন্স চেক
         if (method === 'GET' && query.userId) {
             const user = await users.findOne({ userId: query.userId });
-            return { statusCode: 200, body: JSON.stringify({ balance: user ? user.balance : 0, referClaimed: user ? user.referClaimed : false }) };
+            return { statusCode: 200, body: JSON.stringify({ balance: user ? user.balance : 0 }) };
         }
 
-        // ৩. টুর্নামেন্ট লজিক
+        // ৪. টুর্নামেন্ট লবি লোড
         if (method === 'GET' && query.type === 'getMatches') {
             const list = await matches.find({ status: 'open' }).toArray();
             return { statusCode: 200, body: JSON.stringify(list) };
         }
+
+        // ৫. টুর্নামেন্ট তৈরি
         if (method === 'POST' && body.type === 'createMatch') {
-            await matches.insertOne({ ...body, players: [], status: 'open', createdAt: new Date() });
+            await matches.insertOne({ ...body, players: [], status: 'open', date: new Date() });
             return { statusCode: 200, body: JSON.stringify({ success: true }) };
         }
 
-        // ৪. পেমেন্ট রিকোয়েস্ট (Deposit)
+        // ৬. ডিপোজিট রিকোয়েস্ট
         if (method === 'POST' && body.type === 'deposit') {
             await transactions.insertOne({ ...body, status: 'pending', date: new Date() });
             return { statusCode: 200, body: JSON.stringify({ success: true }) };
         }
 
-        // ৫. অ্যাডমিন লিস্ট ও অ্যাপ্রুভ
+        // ৭. অ্যাডমিন লিস্ট ও অ্যাপ্রুভ
         if (method === 'GET' && query.admin === 'true') {
             const list = await transactions.find({ status: 'pending' }).toArray();
             return { statusCode: 200, body: JSON.stringify(list) };
@@ -72,7 +76,7 @@ exports.handler = async (event, context) => {
         }
 
         return { statusCode: 404, body: 'Not Found' };
-    } catch (e) {
-        return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
+    } catch (err) {
+        return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
     }
 };
