@@ -2,61 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Admin</title>
+    <title>Ludo Pro Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>body{background:#0f172a;color:white;font-family:sans-serif;}.card{background:#1e293b;border-radius:24px;padding:20px;border:1px solid #334155;}</style>
 </head>
-<body class="bg-slate-900 text-white p-4 font-sans">
-    <script>
-        const RENDER_URL = "https://ludo-pro-engine.onrender.com";
-        function login(){ if(prompt("PIN:") === "2025") { document.getElementById('login-box').style.display='none'; document.getElementById('main').style.display='block'; load(); } else alert("Wrong PIN"); }
-        
-        async function load(){
-            const res = await fetch(`${RENDER_URL}/api/admin/requests`);
-            const data = await res.json();
-            document.getElementById('list').innerHTML = data.map(r => `
-                <div class="bg-slate-800 p-4 rounded-2xl flex justify-between items-center mb-3">
-                    <div><p class="font-bold text-lg">৳${r.amount}</p><p class="text-[9px] uppercase text-blue-400 font-bold">${r.userId}</p></div>
-                    <button onclick="approve('${r._id}')" class="bg-green-600 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md uppercase">Approve</button>
-                </div>
-            `).join('');
-            
-            const sRes = await fetch(`${RENDER_URL}/api/settings`);
-            const sData = await sRes.json();
-            document.getElementById('bik').value = sData.bikash || "";
-            document.getElementById('wa_num').value = sData.wa || "";
-        }
-
-        async function approve(id){
-            await fetch(`${RENDER_URL}/api/admin/approve`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id })
-            });
-            alert("Approved!"); load();
-        }
-
-        async function updateSet(){
-            await fetch(`${RENDER_URL}/api/updateSettings`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ bikash: document.getElementById('bik').value, wa: document.getElementById('wa_num').value })
-            });
-            alert("Settings Updated!");
-        }
-        window.onload = login;
-    </script>
-
-    <div id="login-box"></div>
-    <div id="main" class="hidden">
-        <h1 class="text-blue-400 font-black mb-6 uppercase italic text-center">Master Control</h1>
-        <div class="bg-slate-800 p-5 rounded-3xl mb-6 border-l-8 border-cyan-500 shadow-xl">
-            <h3 class="text-xs font-bold text-cyan-500 mb-4 uppercase">Settings</h3>
-            <input type="text" id="bik" placeholder="bKash Number" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm text-white border-none outline-none">
-            <input type="text" id="wa_num" placeholder="WhatsApp (880...)" class="bg-slate-900 p-3 rounded-xl w-full mb-4 text-sm text-white border-none outline-none">
-            <button onclick="updateSet()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save Settings</button>
+<body class="p-4" onload="checkPin()">
+    <div id="main" class="hidden max-w-md m-auto">
+        <h1 class="text-blue-500 font-black text-xl italic mb-6 uppercase text-center tracking-tighter">Master Control</h1>
+        <div class="card border-l-8 border-cyan-500 mb-6 shadow-2xl">
+            <h3 class="text-xs font-bold text-cyan-400 mb-4 uppercase">System Settings</h3>
+            <input type="text" id="bik" placeholder="bKash Number Only" class="bg-slate-900 p-4 rounded-xl w-full mb-3 text-white outline-none">
+            <input type="text" id="wa" placeholder="WhatsApp (880...)" class="bg-slate-900 p-4 rounded-xl w-full mb-4 text-white outline-none">
+            <button onclick="updateSet()" class="w-full bg-cyan-600 py-4 rounded-xl font-bold uppercase text-xs">Save Settings</button>
         </div>
-        <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase ml-2 tracking-widest">Pending Approvals</h3>
+        <h3 class="font-bold text-pink-500 mb-4 uppercase text-xs ml-2">Pending Deposits</h3>
         <div id="list" class="space-y-3"></div>
     </div>
+    <script>
+        const R_URL = "https://ludo-pro-engine.onrender.com";
+        function checkPin(){ if(prompt("PIN:")==="2025") { document.getElementById('main').classList.remove('hidden'); load(); } else document.body.innerHTML="Access Denied"; }
+        async function load(){
+            const res = await fetch(`${R_URL}/api/admin/requests`);
+            const data = await res.json();
+            document.getElementById('list').innerHTML = data.map(r => `<div class="bg-slate-800 p-4 rounded-2xl flex justify-between items-center shadow"><div><p class="font-bold">৳${r.amount}</p><p class="text-[9px] text-blue-400 uppercase">${r.userId}</p></div><button onclick="approve('${r._id}')" class="bg-green-600 text-white px-5 py-2 rounded-xl text-xs font-bold">Approve</button></div>`).join('');
+            const sRes = await fetch(`${R_URL}/api/settings`);
+            const sData = await sRes.json();
+            document.getElementById('bik').value = sData.bikash || "";
+            document.getElementById('wa').value = sData.wa || "";
+        }
+        async function approve(id){ await fetch(`${R_URL}/api/admin/approve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); alert("Approved!"); load(); }
+        async function updateSet(){ await fetch(`${R_URL}/api/updateSettings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bikash:document.getElementById('bik').value,wa:document.getElementById('wa').value})}); alert("Updated!"); }
+    </script>
 </body>
 </html>
