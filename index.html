@@ -1,100 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Royal Cash</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
-        body { background: #f1f5f9; font-family: sans-serif; }
-        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 420px; margin: auto; background: #fff; border: 4px solid #333; border-radius: 8px; overflow: hidden; }
-        .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
-        .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        .tab-content { display: none; } .active-tab { display: block !important; }
-    </style>
-</head>
-<body class="pb-24">
-    <script>
-        const R_URL = "https://ludo-pro-engine.onrender.com";
-        const userId = localStorage.getItem('SN_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('SN_ID', userId);
-        const socket = io(R_URL);
+<!-- index.html এর স্ক্রিপ্টে নিচের ফাংশনগুলো আপডেট করুন -->
+<script>
+    // Tap to Copy function
+    function copyText() {
+        const num = document.getElementById('d-bk').innerText;
+        navigator.clipboard.writeText(num);
+        alert("বিকাশ নাম্বার কপি হয়েছে: " + num);
+    }
 
-        async function init(){
-            document.getElementById('uid').innerText="ID: "+userId;
-            createBoard(); loadBal();
-            const res = await fetch(`${R_URL}/api/settings`);
-            const data = await res.json();
-            document.getElementById('d-bk').innerText = data.bikash;
-            document.getElementById('wa-btn').href = `https://wa.me/${data.wa}`;
-            socket.on("connect", () => { document.getElementById('status').innerText = "Online 🟢"; });
-        }
-
-        async function loadLobby(){
+    // লবি লোড করার ফিক্সড ফাংশন
+    async function loadLobby(){
+        try {
             const res = await fetch(`${R_URL}/api/getMatches`);
             const data = await res.json();
-            document.getElementById('match-list').innerHTML = data.length === 0 ? "<p class='text-center py-20 text-gray-400 uppercase font-bold text-xs'>No Active Matches</p>" : 
-            data.map(m => `
-                <div class="bg-white p-5 rounded-3xl shadow-sm border-l-8 border-blue-600 flex justify-between items-center mb-3">
-                    <div>
-                        <p class="text-[10px] font-bold text-blue-600 uppercase">${m.mode} Player Match</p>
-                        <p class="font-black text-gray-800 text-xl italic">Prize: ৳${m.prize}</p>
-                        <p class="text-[10px] text-gray-400 font-bold mt-1">Starts: ${m.startTime}</p>
+            const list = document.getElementById('match-list');
+            if(data.length === 0) {
+                list.innerHTML = "<p class='text-center py-10 text-gray-400'>কোন টুর্নামেন্ট নেই</p>";
+            } else {
+                list.innerHTML = data.map(m => `
+                    <div class="bg-white p-5 rounded-3xl shadow-md border-l-8 border-blue-600 flex justify-between items-center mb-3">
+                        <div>
+                            <p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p>
+                            <p class="text-[9px] font-bold text-blue-600 uppercase">${m.mode} Players | ${m.startTime}</p>
+                        </div>
+                        <button class="bg-blue-600 text-white px-5 py-2 rounded-xl font-black text-xs">JOIN (৳${m.entryFee})</button>
                     </div>
-                    <button class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-lg">JOIN (৳${m.entryFee})</button>
-                </div>
-            `).join('');
-        }
-
-        function showTab(id){
-            document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab'));
-            document.getElementById(id).classList.add('active-tab');
-            if(id === 'lobby-tab') loadLobby();
-        }
-
-        // বোর্ড ড্রয়িং ফাংশন (আগের মতো)
-        function createBoard(){
-            const b = document.getElementById('board'); b.innerHTML = "";
-            for(let i=0; i<225; i++) {
-                let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell';
-                if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow'); else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
-                b.appendChild(d);
+                `).join('');
             }
-        }
-        async function loadBal(){ const res = await fetch(`${R_URL}/api/balance?userId=${userId}`); const data = await res.json(); document.getElementById('balance').innerText = data.balance || 0; }
-        window.onload = init;
-    </script>
+        } catch(e) { console.log("Lobby load error"); }
+    }
+</script>
 
-    <div class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
-        <div><h1 class="font-bold text-sm italic">LUDO ROYAL</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5 tracking-widest">...</p></div>
-        <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
-    </div>
-
-    <!-- PLAY TAB -->
-    <div id="game-tab" class="tab-content active-tab p-2 text-center">
-        <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
-        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-2"><button onclick="roll()" id="d-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl">🎲</button><p id="status" class="text-[10px] font-bold text-blue-600 uppercase">Connecting...</p></div>
-    </div>
-
-    <!-- LOBBY TAB -->
-    <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
-
-    <!-- WALLET TAB -->
-    <div id="wallet-tab" class="tab-content p-4 space-y-4">
-        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500 text-center">
-            <p id="d-bk" class="font-black text-xl text-pink-700 mb-4 bg-pink-50 p-3 rounded-xl border italic">Loading...</p>
-            <input type="number" id="amt" placeholder="Amount" class="w-full border p-4 rounded-2xl mb-4 outline-none">
-            <button onclick="alert('Submit in Admin')" class="w-full bg-pink-600 text-white py-4 rounded-xl font-bold">SUBMIT DEPOSIT</button>
-        </div>
-        <a href="#" id="wa-btn" target="_blank" class="block bg-green-500 text-white p-4 rounded-2xl text-center font-bold shadow-lg">WhatsApp Support</a>
-    </div>
-
-    <!-- FOOTER NAV -->
-    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
-        <button onclick="showTab('game-tab')" class="font-bold text-[10px] uppercase">Play</button>
-        <button onclick="showTab('lobby-tab')" class="font-bold text-[10px] uppercase">Lobby</button>
-        <button onclick="showTab('wallet-tab')" class="font-bold text-[10px] uppercase">Wallet</button>
-    </div>
-</body>
-</html>
+<!-- UI তে যেখানে বিকাশ নাম্বার আছে সেখানে এই বাটনটি দিন -->
+<div class="bg-pink-50 p-4 rounded-xl text-center mb-5 border cursor-pointer" onclick="copyText()">
+    <p class="text-[10px] text-pink-600 font-bold uppercase">Tap to Copy bKash Number:</p>
+    <p id="d-bk" class="font-black text-xl text-pink-700 tracking-tighter">Loading...</p>
+</div>
