@@ -2,64 +2,109 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Cash Royal</title>
+    <title>Ludo Royal Pro - Live</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
-        body { background: #f3f4f6; font-family: sans-serif; }
-        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 420px; margin: auto; background: #fff; border: 4px solid #333; overflow: hidden; position: relative; }
-        .cell { border: 0.1px solid #ddd; }
+        body { background: #f3f4f6; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 94vw; height: 94vw; max-width: 420px; margin: auto; background: #fff; border: 4px solid #333; border-radius: 8px; overflow: hidden; position: relative; }
+        .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
         .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        .safe { background-image: url('https://cdn-icons-png.flaticon.com/512/1828/1828884.png'); background-size: 60%; background-repeat: no-repeat; background-position: center; }
-        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); position: absolute; z-index: 10; }
+        .piece { width: 80%; height: 80%; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.4); position: absolute; z-index: 50; transition: all 0.3s; cursor: pointer; }
         .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
+        .safe { background-image: url('https://cdn-icons-png.flaticon.com/512/1828/1828884.png'); background-size: 60%; background-repeat: no-repeat; background-position: center; }
     </style>
 </head>
 <body class="pb-24">
+    <audio id="dice-snd" src="https://www.soundjay.com/misc/sounds/dice-roll-1.mp3"></audio>
+    <audio id="move-snd" src="https://www.soundjay.com/buttons/sounds/button-20.mp3"></audio>
+
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
         const userId = localStorage.getItem('L_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
         localStorage.setItem('L_ID', userId);
         const socket = io(R_URL);
 
-        async function init(){
-            createBoard(); document.getElementById('uid').innerText = userId; document.getElementById('my-ref').innerText = userId; loadBal();
-            const res = await fetch(`${R_URL}/api/settings`); const data = await res.json();
+        let currentDice = 0;
+        let currentRoom = "global";
+        let playerColor = "green"; 
+
+        // লুডু পথ (Coordinates)
+        const commonPath = [[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,5],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+        let gutiPos = { green: [-1,-1,-1,-1], yellow: [-1,-1,-1,-1], red: [-1,-1,-1,-1], blue: [-1,-1,-1,-1] };
+
+        async function init() {
+            createBoard();
+            document.getElementById('uid').innerText = userId;
+            loadBal();
+            const res = await fetch(`${R_URL}/api/settings`);
+            const data = await res.json();
             document.getElementById('d-bk').innerText = data.bikash;
+
             socket.on("connect", () => { document.getElementById('status').innerText = "ONLINE 🟢"; });
+            
+            socket.on("diceRolled", (data) => {
+                document.getElementById('dice-snd').play();
+                currentDice = data.value;
+                document.getElementById('dice-val').innerText = data.value;
+            });
+
+            socket.on("pieceMoved", (data) => {
+                moveGutiOnUI(data.color, data.index, data.newPos);
+            });
         }
 
-        async function loadBal(){
-            const res = await fetch(`${R_URL}/api/balance?userId=${userId}`); const data = await res.json();
-            document.getElementById('balance').innerText = data.balance || 0;
-            if(data.referClaimed) document.getElementById('refer-input-area').innerHTML = "<p class='text-center font-bold text-xs text-green-600'>✅ বোনাস নেওয়া হয়েছে!</p>";
+        function roll() {
+            const v = Math.floor(Math.random() * 6) + 1;
+            socket.emit("rollDice", { roomId: currentRoom, value: v, player: userId });
+        }
+
+        function handleGutiClick(color, index) {
+            if (currentDice === 0) return;
+            let pos = gutiPos[color][index];
+            if (pos === -1 && currentDice === 6) pos = 0;
+            else if (pos !== -1) pos += currentDice;
+            else return;
+
+            if (pos >= 52) return alert("Home Logic Soon!");
+            
+            gutiPos[color][index] = pos;
+            socket.emit("movePiece", { roomId: currentRoom, color, index, newPos: pos });
+            moveGutiOnUI(color, index, pos);
+            currentDice = 0;
+        }
+
+        function moveGutiOnUI(color, index, pos) {
+            const p = document.getElementById(`piece-${color}-${index}`);
+            const coords = commonPath[pos];
+            const cell = document.getElementById(`c-${coords[0]}-${coords[1]}`);
+            if (p && cell) {
+                document.getElementById('move-snd').play();
+                cell.appendChild(p);
+            }
+        }
+
+        function joinMatch(id) {
+            currentRoom = id;
+            socket.emit("joinRoom", id);
+            alert("Joined! Go to Play Tab.");
+            showTab('game-tab');
         }
 
         async function loadLobby(){
-            const res = await fetch(`${R_URL}/api/getMatches`); const data = await res.json();
+            const res = await fetch(`${R_URL}/api/getMatches`);
+            const data = await res.json();
             document.getElementById('match-list').innerHTML = data.map(m => `
                 <div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3">
-                    <div><p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase">${m.mode} Player | ${m.startTime}</p></div>
-                    <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase shadow-md">Join (৳${m.entryFee})</button>
+                    <div><p class="font-black text-gray-800 italic">Prize: ৳${m.prize}</p><p class="text-[9px] uppercase font-bold text-blue-600">${m.mode} Players</p></div>
+                    <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase">JOIN</button>
                 </div>
             `).join('');
         }
 
-        async function joinMatch(id) {
-            const res = await fetch(`${R_URL}/api/joinMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId:id, userId}) });
-            if(res.ok){ alert("সফলভাবে জয়েন করেছেন!"); loadBal(); loadLobby(); } else { const d = await res.json(); alert(d.error); }
-        }
-
-        async function claimRefer() {
-            const referCode = document.getElementById('ref-input').value;
-            const res = await fetch(`${R_URL}/api/claimRefer`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, referCode}) });
-            if(res.ok){ alert("বোনাস যোগ হয়েছে!"); loadBal(); } else alert("ভুল কোড!");
-        }
-
-        function showTab(id){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab')); document.getElementById(id).classList.add('active-tab'); if(id==='lobby-tab') loadLobby(); }
-        function createBoard(){
+        function createBoard() {
             const b = document.getElementById('board'); b.innerHTML = "";
             for(let i=0; i<225; i++) {
                 let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell'; d.id=`c-${r}-${c}`;
@@ -69,13 +114,20 @@
                 const safe = [[6,2],[2,8],[8,12],[12,6]]; safe.forEach(s=>{if(r==s[0]&&c==s[1])d.classList.add('safe')});
                 b.appendChild(d);
             }
-            const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);};
-            addP(1,1,'green');addP(1,4,'green');addP(4,1,'green');addP(4,4,'green'); addP(1,10,'yellow');addP(1,13,'yellow');addP(4,10,'yellow');addP(4,13,'yellow');
-            addP(10,1,'red');addP(10,4,'red');addP(13,1,'red');addP(13,4,'red'); addP(10,10,'blue');addP(10,13,'blue');addP(13,10,'blue');addP(13,13,'blue');
+            const colors = ['green', 'yellow', 'red', 'blue'];
+            const startPos = [[1,1], [1,10], [10,1], [10,10]];
+            colors.forEach((color, ci) => {
+                for(let i=0; i<4; i++) {
+                    const p = document.createElement('div'); p.id = `piece-${color}-${i}`; p.className = `piece p-${color}`;
+                    p.onclick = () => handleGutiClick(color, i);
+                    document.getElementById(`c-${startPos[ci][0] + (i>1?1:0)}-${startPos[ci][1] + (i%2==0?0:1)}`).appendChild(p);
+                }
+            });
         }
-        async function dep(){ const amount=document.getElementById('amt').value; const trxId=document.getElementById('trx').value; await fetch(`${R_URL}/api/deposit`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId, amount, trxId, type:'deposit'})}); alert("অনুরোধ পাঠানো হয়েছে!"); }
-        function copyNum(){ navigator.clipboard.writeText(document.getElementById('d-bk').innerText); alert("কপি হয়েছে!"); }
-        function roll() { document.getElementById('d-btn').innerText = ["⚀","⚁","⚂","⚃","⚄","⚅"][Math.floor(Math.random()*6)]; }
+
+        async function loadBal(){ const res = await fetch(`${R_URL}/api/balance?userId=${userId}`); const data = await res.json(); document.getElementById('balance').innerText = data.balance || 0; }
+        function showTab(id){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab')); document.getElementById(id).classList.add('active-tab'); if(id==='lobby-tab') loadLobby(); }
+        async function dep(){ const amount=document.getElementById('amt').value; const trxId=document.getElementById('trx').value; await fetch(`${R_URL}/api/deposit`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId, amount, trxId, type:'deposit'})}); alert("Request Sent!"); }
         window.onload = init;
     </script>
 
@@ -84,28 +136,21 @@
         <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
     </div>
 
-    <!-- TAB: PLAY -->
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
         <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4 border">
-            <button onclick="roll()" id="d-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl">🎲</button>
-            <div id="status" class="text-[10px] font-bold text-blue-600 uppercase">Connecting...</div>
-            <button onclick="alert('Join match to chat!')" class="w-10 h-10 rounded-full bg-gray-100 text-xl">💬</button>
+            <button onclick="roll()" id="d-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl flex items-center justify-center">🎲</button>
+            <div id="status" class="text-[10px] font-bold text-blue-600 uppercase italic">CONNECTING... <span id="dice-val">?</span></div>
+            <button onclick="alert('Join Match to Chat!')" class="w-10 h-10 rounded-full bg-gray-100 text-xl">💬</button>
         </div>
     </div>
 
-    <!-- TAB: LOBBY -->
     <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
 
-    <!-- TAB: WALLET -->
     <div id="wallet-tab" class="tab-content p-4 space-y-4">
-        <div id="refer-input-area" class="bg-gradient-to-r from-orange-400 to-yellow-500 p-5 rounded-3xl text-white shadow-lg">
-            <p class="text-[9px] uppercase font-bold">আমার কোড:</p><p id="my-ref" class="font-black text-xl mb-3">...</p>
-            <div class="flex gap-2"><input type="text" id="ref-input" placeholder="বন্ধুর কোড দিন" class="flex-1 p-2 rounded-xl text-black text-sm outline-none"><button onclick="claimRefer()" class="bg-black text-white px-4 rounded-xl font-bold text-xs">CLAIM</button></div>
-        </div>
         <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500 text-center">
-            <div class="bg-pink-50 p-4 rounded-xl mb-4 border cursor-pointer" onclick="copyNum()"><p id="d-bk" class="font-black text-xl text-pink-700">Loading...</p><p class="text-[8px] text-pink-500 uppercase">Tap to copy</p></div>
-            <input type="number" id="amt" placeholder="৳ Amount" class="w-full border p-3 rounded-xl mb-2"><input type="text" id="trx" placeholder="TrxID" class="w-full border p-3 rounded-xl mb-4"><button onclick="dep()" class="w-full bg-pink-600 text-white py-3 rounded-xl font-bold shadow-lg uppercase">Submit Request</button>
+            <p id="d-bk" class="font-black text-xl text-pink-700 mb-4 tracking-widest italic">Loading...</p>
+            <input type="number" id="amt" placeholder="৳ Amount" class="w-full border p-3 rounded-xl mb-2 outline-none"><input type="text" id="trx" placeholder="TrxID" class="w-full border p-3 rounded-xl mb-4 outline-none"><button onclick="dep()" class="w-full bg-pink-600 text-white py-3 rounded-xl font-bold shadow-lg uppercase">Submit Deposit</button>
         </div>
     </div>
 
