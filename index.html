@@ -2,114 +2,129 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Royal Pro - Live Gameplay</title>
+    <title>Ludo Royal Pro - Gameplay Fix</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
-        body { background: #f3f4f6; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 420px; margin: auto; background: #fff; border: 4px solid #333; overflow: hidden; position: relative; }
-        .cell { border: 0.1px solid #ddd; position: relative; }
+        body { background: #f1f5f9; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 94vw; height: 94vw; max-width: 420px; margin: auto; background: #fff; border: 5px solid #333; border-radius: 8px; overflow: hidden; position: relative; }
+        .cell { border: 0.1px solid #ddd; position: relative; display: flex; align-items: center; justify-content: center; }
         .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        .safe { background-image: url('https://cdn-icons-png.flaticon.com/512/1828/1828884.png'); background-size: 60%; background-position: center; background-repeat: no-repeat; }
-        /* Piece Design */
-        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); position: absolute; z-index: 50; transition: all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); cursor: pointer; }
+        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); position: absolute; z-index: 50; transition: all 0.4s; cursor: pointer; }
         .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
+        .dice-anim { animation: shake 0.3s linear; }
+        @keyframes shake { 0% { transform: rotate(0); } 25% { transform: rotate(10deg); } 50% { transform: rotate(-10deg); } 100% { transform: rotate(0); } }
     </style>
 </head>
 <body class="pb-24">
-    <audio id="dice-snd" src="https://www.soundjay.com/misc/sounds/dice-roll-1.mp3" preload="auto"></audio>
-    <audio id="move-snd" src="https://www.soundjay.com/buttons/sounds/button-20.mp3" preload="auto"></audio>
+    <audio id="dice-snd" src="https://www.soundjay.com/misc/sounds/dice-roll-1.mp3"></audio>
+    <audio id="move-snd" src="https://www.soundjay.com/buttons/sounds/button-20.mp3"></audio>
 
     <div class="bg-blue-600 text-white p-4 flex justify-between shadow-lg sticky top-0 z-50">
-        <h1 class="font-bold text-sm italic">LUDO PRO</h1>
+        <h1 class="font-bold text-sm italic">LUDO ROYAL</h1>
         <p class="font-bold text-yellow-300">৳ <span id="balance">0</span></p>
     </div>
 
     <!-- PLAY TAB -->
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
-        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4 border">
-            <button onclick="roll()" id="d-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl flex items-center justify-center">🎲</button>
-            <div id="status" class="text-[10px] font-bold text-blue-600 uppercase">ONLINE 🟢 <span id="dice-val">?</span></div>
-            <p id="uid" class="text-[8px] bg-gray-100 p-1 rounded">ID: ...</p>
+        <div class="mt-8 bg-white p-5 rounded-3xl shadow mx-4 flex flex-col items-center">
+            <div id="dice-container" onclick="roll()" class="w-20 h-20 bg-white rounded-2xl shadow-2xl border-b-8 border-gray-200 flex items-center justify-center text-5xl cursor-pointer active:scale-95 transition-all">
+                <span id="dice-face">🎲</span>
+            </div>
+            <div id="status" class="mt-3 text-[11px] font-bold text-blue-600 uppercase">Connecting Server...</div>
+            <p id="uid" class="text-[9px] text-gray-400 mt-1 font-mono">ID: ...</p>
         </div>
     </div>
 
-    <!-- LOBBY & WALLET (আগের মতো থাকবে) -->
+    <!-- LOBBY & WALLET (Small Version) -->
     <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
-    <div id="wallet-tab" class="tab-content p-4">
+    <div id="wallet-tab" class="tab-content p-4 space-y-4">
         <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500 text-center">
             <p id="d-bk" class="font-black text-xl text-pink-700 mb-4">Loading...</p>
-            <input type="number" id="amt" placeholder="৳ Amount" class="w-full border p-3 rounded-xl mb-4 outline-none">
-            <button onclick="dep()" class="w-full bg-pink-600 text-white py-3 rounded-xl font-bold uppercase">Submit Deposit</button>
+            <input type="number" id="amt" placeholder="Amount (৳)" class="w-full border p-4 rounded-2xl mb-4 outline-none">
+            <button onclick="dep()" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold uppercase shadow-lg">Submit Deposit</button>
         </div>
     </div>
 
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
-        <button onclick="showTab('game-tab')" class="font-bold text-[10px]">PLAY</button>
-        <button onclick="showTab('lobby-tab')" class="font-bold text-[10px]">LOBBY</button>
-        <button onclick="showTab('wallet-tab')" class="font-bold text-[10px]">WALLET</button>
+        <button onclick="showTab('game-tab')" class="font-bold text-xs">PLAY</button>
+        <button onclick="showTab('lobby-tab')" class="font-bold text-xs">LOBBY</button>
+        <button onclick="showTab('wallet-tab')" class="font-bold text-xs">WALLET</button>
     </div>
 
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
-        const userId = localStorage.getItem('SN_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('SN_ID', userId);
+        const userId = localStorage.getItem('L_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('L_ID', userId);
         const socket = io(R_URL);
 
-        let currentDice = 0;
-        let currentRoom = "global";
+        let currentDiceVal = 0;
+        let canRoll = true;
 
-        // লুডু পথ (Coordinates Mapping)
-        const commonPath = [[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,5],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+        // ম্যাপ কোঅর্ডিনেট
+        const path = [[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,5],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
         let gutiPos = { green: [-1,-1,-1,-1], yellow: [-1,-1,-1,-1], red: [-1,-1,-1,-1], blue: [-1,-1,-1,-1] };
 
         function init() {
             createBoard();
-            document.getElementById('uid').innerText = userId;
+            document.getElementById('uid').innerText = "ID: " + userId;
             loadBal();
-            fetch(`${R_URL}/api/settings`).then(r => r.json()).then(data => document.getElementById('d-bk').innerText = data.bikash);
+            fetch(`${R_URL}/api/settings`).then(r => r.json()).then(d => document.getElementById('d-bk').innerText = d.bikash);
 
-            socket.on("diceRolled", (data) => {
-                document.getElementById('dice-snd').play();
-                currentDice = data.value;
-                document.getElementById('dice-val').innerText = data.value;
-            });
-
-            socket.on("pieceMoved", (data) => {
-                moveGutiUI(data.color, data.index, data.newPos);
-            });
+            socket.on("connect", () => { document.getElementById('status').innerText = "ONLINE 🟢"; });
+            socket.on("diceRolled", (data) => { updateDiceUI(data.value); });
+            socket.on("pieceMoved", (data) => { moveGutiUI(data.color, data.index, data.newPos); });
         }
 
         function roll() {
+            if (!canRoll) return;
+            document.getElementById('dice-snd').play();
+            document.getElementById('dice-container').classList.add('dice-anim');
+            
             const v = Math.floor(Math.random() * 6) + 1;
-            socket.emit("rollDice", { roomId: currentRoom, value: v, player: userId });
+            setTimeout(() => {
+                document.getElementById('dice-container').classList.remove('dice-anim');
+                socket.emit("rollDice", { roomId: "global", value: v, player: userId });
+                updateDiceUI(v);
+                canRoll = false; 
+                document.getElementById('status').innerText = "Pick a Guti!";
+            }, 300);
+        }
+
+        function updateDiceUI(v) {
+            const faces = ["⚀","⚁","⚂","⚃","⚄","⚅"];
+            document.getElementById('dice-face').innerText = faces[v-1];
+            currentDiceVal = v;
         }
 
         function handleGutiClick(color, index) {
-            if (currentDice === 0) return;
+            if (currentDiceVal === 0) return;
             let pos = gutiPos[color][index];
             
             if (pos === -1) {
-                if (currentDice === 6) pos = 0; // ঘর থেকে বের হওয়া
+                if (currentDiceVal === 6) pos = 0;
                 else return;
             } else {
-                pos += currentDice;
+                pos += currentDiceVal;
             }
 
-            if (pos >= 52) pos = 51; // আপাতত এন্ড পয়েন্ট ফিক্সড
+            if (pos >= 52) { alert("Home reached!"); pos = -1; } // রিসেট
             
             gutiPos[color][index] = pos;
-            socket.emit("movePiece", { roomId: currentRoom, color, index, newPos: pos });
+            socket.emit("movePiece", { roomId: "global", color, index, newPos: pos });
             moveGutiUI(color, index, pos);
-            currentDice = 0; // চাল শেষ
+            currentDiceVal = 0;
+            canRoll = true;
+            document.getElementById('status').innerText = "Roll Dice";
         }
 
         function moveGutiUI(color, index, pos) {
             const p = document.getElementById(`piece-${color}-${index}`);
-            const coords = commonPath[pos];
+            const coords = path[pos];
+            if (pos === -1) return location.reload(); // হোম পৌঁছালে পেজ রিফ্রেশ
             const cell = document.getElementById(`c-${coords[0]}-${coords[1]}`);
             if (p && cell) {
                 document.getElementById('move-snd').play();
@@ -122,19 +137,13 @@
             for(let i=0; i<225; i++) {
                 let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell'; d.id=`c-${r}-${c}`;
                 if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow'); else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
-                if(r==7 && c>0 && c<7) d.classList.add('red'); if(r==7 && c>7 && c<14) d.classList.add('yellow');
-                if(c==7 && r>0 && r<7) d.classList.add('green'); if(c==7 && r>7 && r<14) d.classList.add('blue');
-                const safe = [[6,2],[2,8],[8,12],[12,6]]; safe.forEach(s=>{if(r==s[0]&&c==s[1])d.classList.add('safe')});
                 b.appendChild(d);
             }
-            // গুটি বসানো
             const colors = ['green', 'yellow', 'red', 'blue'];
             const startPos = [[1,1], [1,10], [10,1], [10,10]];
             colors.forEach((color, ci) => {
                 for(let i=0; i<4; i++) {
-                    const p = document.createElement('div');
-                    p.id = `piece-${color}-${i}`;
-                    p.className = `piece p-${color}`;
+                    const p = document.createElement('div'); p.id = `piece-${color}-${i}`; p.className = `piece p-${color}`;
                     p.onclick = () => handleGutiClick(color, i);
                     document.getElementById(`c-${startPos[ci][0] + (i>1?1:0)}-${startPos[ci][1] + (i%2==0?0:1)}`).appendChild(p);
                 }
@@ -143,7 +152,7 @@
 
         async function loadBal(){ fetch(`${R_URL}/api/balance?userId=${userId}`).then(r=>r.json()).then(d=>document.getElementById('balance').innerText=d.balance||0); }
         function showTab(id){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab')); document.getElementById(id).classList.add('active-tab'); }
-        async function dep(){ const amount=document.getElementById('amt').value; await fetch(`${R_URL}/api/deposit`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId, amount, type:'deposit'})}); alert("Sent!"); }
+        async function dep(){ const amount=document.getElementById('amt').value; await fetch(`${R_URL}/api/deposit`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId, amount, type:'deposit'})}); alert("Request Sent!"); }
         
         window.onload = init;
     </script>
