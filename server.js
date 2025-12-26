@@ -22,32 +22,44 @@ async function run() {
     const transactions = db.collection("transactions");
     const matches = db.collection("matches");
 
-    // --- Admin: Delete Match (নিশ্চিত ফিক্স) ---
-    app.post("/api/admin/deleteMatch", async (req, res) => {
+    // --- Lobby & Joining Logic (Fixed) ---
+    app.get("/api/getMatches", async (req, res) => {
+        const list = await matches.find({ status: "open" }).toArray();
+        res.json(list);
+    });
+
+    app.post("/api/createMatch", async (req, res) => {
+        const { entryFee, prize, mode, startTime, roomCode } = req.body;
+        await matches.insertOne({ 
+            entryFee: parseInt(entryFee), 
+            prize: parseInt(prize), 
+            mode: parseInt(mode), 
+            startTime, 
+            roomCode,
+            players: [], 
+            status: "open", 
+            date: new Date() 
+        });
+        res.json({ success: true });
+    });
+
+    app.post("/api/joinMatch", async (req, res) => {
+        const { matchId, userId } = req.body;
         try {
-            const { id } = req.body;
-            await matches.deleteOne({ _id: new ObjectId(id) });
+            const match = await matches.findOne({ _id: new ObjectId(matchId) });
+            const user = await users.findOne({ userId });
+
+            if (!user || user.balance < match.entryFee) return res.status(400).json({ error: "ব্যালেন্স নেই, রিচার্জ করুন" });
+            if (match.players.length >= match.mode) return res.status(400).json({ error: "ম্যাচটি ইতিমধ্যে ফুল!" });
+            if (match.players.includes(userId)) return res.status(400).json({ error: "আপনি ইতিমধ্যেই জয়েন করেছেন" });
+
+            await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });
+            await matches.updateOne({ _id: new ObjectId(matchId) }, { $push: { players: userId } });
             res.json({ success: true });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { res.status(500).json({ error: "Joining failed" }); }
     });
 
-    // --- Admin: Get All Matches ---
-    app.get("/api/admin/allMatches", async (req, res) => {
-        const list = await matches.find().sort({ date: -1 }).toArray();
-        res.json(list);
-    });
-
-    // --- Admin: Get User Referral List ---
-    app.get("/api/admin/users", async (req, res) => {
-        const all = await users.find().toArray();
-        const list = await Promise.all(all.map(async (u) => {
-            const rCount = await users.countDocuments({ referredBy: u.userId });
-            return { userId: u.userId, balance: u.balance, referCount: rCount };
-        }));
-        res.json(list);
-    });
-
-    // --- API Routes (General) ---
+    // --- Other APIs (Settings, Admin, Balance) ---
     app.get("/api/settings", async (req, res) => {
         const data = await settings.findOne({ id: "config" });
         res.json(data || { bikash: "017XXXXXXXX", wa: "8801700000000", referBonus: 10 });
@@ -64,14 +76,6 @@ async function run() {
         await transactions.insertOne({ ...req.body, status: "pending", date: new Date() });
         res.json({ success: true });
     });
-    app.get("/api/getMatches", async (req, res) => {
-        const list = await matches.find({ status: "open" }).toArray();
-        res.json(list);
-    });
-    app.post("/api/createMatch", async (req, res) => {
-        await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
-        res.json({ success: true });
-    });
     app.get("/api/admin/requests", async (req, res) => {
         const list = await transactions.find({ status: "pending" }).toArray();
         res.json(list);
@@ -81,7 +85,7 @@ async function run() {
         const request = await transactions.findOne({ _id: new ObjectId(id) });
         if (action === "approve") {
             await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "approved" } });
-            await users.updateOne({ userId: request.userId }, { $inc: { balance: parseInt(request.amount) } }, { upsert: true });
+            if (request.type === "deposit") await users.updateOne({ userId: request.userId }, { $inc: { balance: parseInt(request.amount) } }, { upsert: true });
         } else {
             await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "rejected" } });
         }
