@@ -17,53 +17,62 @@ const client = new MongoClient(uri);
 async function run() {
     await client.connect();
     const db = client.db("ludocash");
-    const users = db.collection("users");
     const matches = db.collection("matches");
+    const users = db.collection("users");
     const settings = db.collection("settings");
-    const transactions = db.collection("transactions");
 
-    // লবি এবং টুর্নামেন্ট এপিআই
-    app.get("/api/getMatches", async (req, res) => {
-        const list = await matches.find({ status: "open" }).toArray();
-        res.json(list);
+    // --- টুর্নামেন্ট টাইম মনিটর (বাংলাদেশ সময় অনুযায়ী) ---
+    setInterval(async () => {
+        const now = new Date();
+        const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
+        
+        // বর্তমান সময় ফরম্যাট করা (যেমন: 10:30 PM)
+        const currentTime = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+        // ১ মিনিট পরের সময় বের করা (নোটিফিকেশনের জন্য)
+        const oneMinLaterDate = new Date(bdTime.getTime() + 60000);
+        const oneMinLater = oneMinLaterDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+        // ১. নোটিফিকেশন পাঠানো (১ মিনিট আগে)
+        const upcomingMatches = await matches.find({ status: "open", startTime: oneMinLater }).toArray();
+        upcomingMatches.forEach(m => {
+            io.to(m._id.toString()).emit("oneMinWarning", { msg: "আপনার ম্যাচ ১ মিনিট পর শুরু হবে! তৈরি থাকুন।" });
+        });
+
+        // ২. গেম স্টার্ট করা (ঠিক সময়ে)
+        const matchesToStart = await matches.find({ status: "open", startTime: currentTime }).toArray();
+        for (let m of matchesToStart) {
+            await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
+            io.to(m._id.toString()).emit("gameStartNow", { matchId: m._id, roomCode: m.roomCode });
+            console.log("Started Match: " + m.startTime);
+        }
+    }, 20000); // প্রতি ২০ সেকেন্ডে চেক করবে
+
+    // APIs
+    app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));
+    app.post("/api/createMatch", async (req, res) => {
+        const { entryFee, prize, mode, startTime, roomCode } = req.body;
+        await matches.insertOne({ entryFee: parseInt(entryFee), prize: parseInt(prize), mode: parseInt(mode), startTime, roomCode, players: [], status: "open", date: new Date() });
+        res.json({ success: true });
     });
-
     app.post("/api/joinMatch", async (req, res) => {
         const { matchId, userId } = req.body;
         const match = await matches.findOne({ _id: new ObjectId(matchId) });
-        if (match.players.length >= match.mode) return res.status(400).json({ error: "ম্যাচ ফুল!" });
-        
+        const user = await users.findOne({ userId });
+        if (!user || user.balance < match.entryFee) return res.status(400).json({ error: "ব্যালেন্স নেই" });
+        await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });
         await matches.updateOne({ _id: new ObjectId(matchId) }, { $push: { players: userId } });
-        
-        // যদি প্লেয়ার পূর্ণ হয়, গেম শুরু হবে
-        if (match.players.length + 1 == match.mode) {
-            await matches.updateOne({ _id: new ObjectId(matchId) }, { $set: { status: "playing" } });
-            io.to(matchId).emit("gameStarted", { players: [...match.players, userId] });
-        }
         res.json({ success: true });
     });
-
-    // কমন এপিআই (ওয়ালেট ও সেটিংস)
     app.get("/api/balance", async (req, res) => {
-        const user = await users.findOne({ userId: req.query.userId });
-        res.json({ balance: user ? user.balance : 0 });
+        const u = await users.findOne({ userId: req.query.userId });
+        res.json({ balance: u ? u.balance : 0 });
     });
-    app.get("/api/settings", async (req, res) => {
-        res.json(await settings.findOne({id:"config"}) || {});
-    });
+    app.get("/api/settings", async (req, res) => res.json(await settings.findOne({id:"config"}) || {bikash:"017XXXXXXXX"}));
 
-    // সকেট কানেকশন (চাল আদান-প্রদান)
     io.on("connection", (socket) => {
         socket.on("joinRoom", (id) => socket.join(id));
-        
-        socket.on("rollDice", (data) => {
-            const roll = Math.floor(Math.random() * 6) + 1;
-            io.to(data.roomId).emit("diceRolled", { ...data, roll });
-        });
-
-        socket.on("moveGuti", (data) => {
-            io.to(data.roomId).emit("gutiMoved", data);
-        });
+        socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
     });
 
     server.listen(process.env.PORT || 3000);
