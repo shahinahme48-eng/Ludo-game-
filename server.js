@@ -25,7 +25,7 @@ async function run() {
     // --- API Routes ---
     app.get("/api/settings", async (req, res) => {
         const data = await settings.findOne({ id: "config" });
-        res.json(data || { bikash: "017XXXXXXXX", referBonus: 10 });
+        res.json(data || { bikash: "017XXXXXXXX", wa: "8801700000000" });
     });
 
     app.get("/api/balance", async (req, res) => {
@@ -33,8 +33,18 @@ async function run() {
         res.json({ balance: user ? user.balance : 0 });
     });
 
-    app.post("/api/createMatch", async (req, res) => {
-        await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
+    app.post("/api/deposit", async (req, res) => {
+        await transactions.insertOne({ ...req.body, status: "pending", type: "deposit", date: new Date() });
+        res.json({ success: true });
+    });
+
+    app.post("/api/withdraw", async (req, res) => {
+        const { userId, amount, phone } = req.body;
+        const user = await users.findOne({ userId });
+        if (!user || user.balance < amount) return res.status(400).json({ error: "ব্যালেন্স পর্যাপ্ত নয়" });
+        
+        await users.updateOne({ userId }, { $inc: { balance: -parseInt(amount) } });
+        await transactions.insertOne({ userId, amount, phone, status: "pending", type: "withdraw", date: new Date() });
         res.json({ success: true });
     });
 
@@ -43,37 +53,34 @@ async function run() {
         res.json(list);
     });
 
-    // --- Multiplayer & Turn Management ---
-    let gameStates = {};
+    app.post("/api/joinMatch", async (req, res) => {
+        const { matchId, userId } = req.body;
+        const match = await matches.findOne({ _id: new ObjectId(matchId) });
+        const user = await users.findOne({ userId });
 
-    io.on("connection", (socket) => {
-        socket.on("joinRoom", (roomId) => {
-            socket.join(roomId);
-            if (!gameStates[roomId]) {
-                gameStates[roomId] = { turnIndex: 0, players: [] };
-            }
-        });
+        if (!user || user.balance < match.entryFee) return res.status(400).json({ error: "ব্যালেন্স নেই, রিচার্জ করুন" });
+        if (match.players.includes(userId)) return res.status(400).json({ error: "ইতিমধ্যেই জয়েন করেছেন" });
 
-        socket.on("rollDice", (data) => {
-            io.to(data.roomId).emit("diceRolled", { ...data, socketId: socket.id });
-        });
+        await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });
+        await matches.updateOne({ _id: new ObjectId(matchId) }, { $push: { players: userId } });
+        
+        io.emit("matchUpdated"); // সবাইকে জানানো যে প্লেয়ার বেড়েছে
+        res.json({ success: true });
+    });
 
-        socket.on("movePiece", (data) => {
-            io.to(data.roomId).emit("pieceMoved", data);
-        });
+    // Admin
+    app.get("/api/admin/requests", async (req, res) => {
+        const list = await transactions.find({ status: "pending" }).toArray();
+        res.json(list);
+    });
 
-        // গুটি কাটা গেলে মেসেজ পাঠানো
-        socket.on("killNotification", (data) => {
-            io.to(data.roomId).emit("showToast", { msg: data.msg });
-        });
-
-        // অটোমেটিক উইনার এবং টাকা ট্রান্সফার
-        socket.on("declareWinner", async (data) => {
-            const { userId, prize, roomId } = data;
-            await users.updateOne({ userId }, { $inc: { balance: parseInt(prize) } });
-            await matches.updateOne({ _id: new ObjectId(roomId) }, { $set: { status: "finished", winner: userId } });
-            io.to(roomId).emit("gameOver", { winner: userId, prize });
-        });
+    app.post("/api/admin/approve", async (req, res) => {
+        const request = await transactions.findOne({ _id: new ObjectId(req.body.id) });
+        if (request && request.type === "deposit") {
+            await users.updateOne({ userId: request.userId }, { $inc: { balance: parseInt(request.amount) } }, { upsert: true });
+        }
+        await transactions.updateOne({ _id: new ObjectId(req.body.id) }, { $set: { status: "approved" } });
+        res.json({ success: true });
     });
 
     server.listen(process.env.PORT || 3000);
