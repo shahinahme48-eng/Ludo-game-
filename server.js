@@ -17,83 +17,71 @@ const client = new MongoClient(uri);
 async function run() {
     await client.connect();
     const db = client.db("ludocash");
+    const matches = db.collection("matches");
     const users = db.collection("users");
     const settings = db.collection("settings");
-    const transactions = db.collection("transactions");
-    const matches = db.collection("matches");
 
-    function normalizeTime(t) {
-        if(!t) return "";
-        return t.replace(/[:\s\.]/g, '').replace(/^0+/, '').toUpperCase().trim();
-    }
+    let roomTurns = {}; // প্রতিটি রুমের বর্তমান টার্ন সেভ রাখার জন্য
 
-    // --- টুর্নামেন্ট টাইম মনিটর ---
+    // --- টুর্নামেন্ট মনিটর ---
     setInterval(async () => {
         const now = new Date();
         const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
-        const currentTime = normalizeTime(bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }));
+        const currentTime = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase().replace(/\./g, '');
 
-        const openMatches = await matches.find({ status: "open" }).toArray();
-        for (let m of openMatches) {
-            if (normalizeTime(m.startTime) === currentTime) {
-                if (m.players.length >= 2) {
-                    await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
-                    io.to(m._id.toString()).emit("gameStartNow", { 
-                        matchId: m._id.toString(), 
-                        roomCode: m.roomCode,
-                        prize: m.prize 
-                    });
-                } else {
-                    await matches.updateOne({ _id: m._id }, { $set: { status: "expired" } });
-                }
+        const toStart = await matches.find({ status: "open", startTime: currentTime }).toArray();
+        for (let m of toStart) {
+            if (m.players.length >= 2) {
+                await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
+                roomTurns[m._id.toString()] = 0; // প্রথম প্লেয়ারের টার্ন সেট করা
+                io.to(m._id.toString()).emit("gameStartNow", { 
+                    matchId: m._id.toString(), 
+                    roomCode: m.roomCode,
+                    players: m.players,
+                    currentTurn: m.players[0]
+                });
             }
         }
     }, 15000);
 
-    // টুর্নামেন্ট তৈরি (Admin)
-    app.post("/api/createMatch", async (req, res) => {
-        const { entryFee, prize, mode, startTime, roomCode, roomPass } = req.body;
-        await matches.insertOne({ 
-            entryFee: parseInt(entryFee), 
-            prize: parseInt(prize), 
-            mode: parseInt(mode), 
-            startTime, 
-            roomCode, 
-            roomPass, 
-            players: [], 
-            status: "open", 
-            date: new Date() 
-        });
-        res.json({ success: true });
-    });
-
-    // টুর্নামেন্ট জয়েন (Password Check)
+    // APIs
+    app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));
     app.post("/api/joinMatch", async (req, res) => {
-        const { matchId, userId, pass } = req.body;
-        const match = await matches.findOne({ _id: new ObjectId(matchId) });
-        const user = await users.findOne({ userId });
-
-        if (match.roomPass !== pass) return res.status(400).json({ error: "ভুল পাসওয়ার্ড!" });
-        if (user.balance < match.entryFee) return res.status(400).json({ error: "ব্যালেন্স নেই" });
-        if (match.players.length >= match.mode) return res.status(400).json({ error: "রুম ফুল" });
-
-        await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });
+        const { matchId, userId } = req.body;
         await matches.updateOne({ _id: new ObjectId(matchId) }, { $addToSet: { players: userId } });
         res.json({ success: true });
     });
-
-    // লবি ডাটা
-    app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));
     app.get("/api/balance", async (req, res) => {
         const u = await users.findOne({ userId: req.query.userId });
         res.json({ balance: u ? u.balance : 0 });
     });
+    app.get("/api/settings", async (req, res) => res.json(await settings.findOne({id:"config"}) || {bikash:"017XXXXXXXX"}));
 
-    // সকেট লজিক
+    // --- Multiplayer Socket Sync ---
     io.on("connection", (socket) => {
         socket.on("joinRoom", (id) => socket.join(id));
-        socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
-        socket.on("movePiece", (d) => io.to(d.roomId).emit("pieceMoved", d));
+
+        socket.on("rollDice", (data) => {
+            io.to(data.roomId).emit("diceRolled", data);
+        });
+
+        socket.on("movePiece", async (data) => {
+            const match = await matches.findOne({ _id: new ObjectId(data.roomId) });
+            if(!match) return;
+
+            // টার্ন পরিবর্তন লজিক (৬ না পড়লে টার্ন বদলাবে)
+            let nextTurnPlayer = data.player; 
+            if (data.diceValue !== 6) {
+                let currentIndex = match.players.indexOf(data.player);
+                let nextIndex = (currentIndex + 1) % match.players.length;
+                nextTurnPlayer = match.players[nextIndex];
+            }
+
+            io.to(data.roomId).emit("pieceMoved", {
+                ...data,
+                nextTurn: nextTurnPlayer
+            });
+        });
     });
 
     server.listen(process.env.PORT || 3000);
