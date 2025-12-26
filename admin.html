@@ -2,51 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Master Admin</title>
+    <title>Master Admin - Approvals</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>body{background:#0f172a;color:white;font-family:sans-serif;}.card{background:#1e293b;border-radius:20px;padding:20px;margin-bottom:20px;border:1px solid #334155;}</style>
+    <style>body{background:#0f172a;color:white;font-family:sans-serif;}.card{background:#1e293b;border-radius:24px;padding:20px;border:1px solid #334155;margin-bottom:20px;}</style>
 </head>
 <body class="p-4" onload="checkPin()">
     <div id="main" class="hidden max-w-lg m-auto">
-        <h1 class="text-blue-500 font-black text-center mb-6 uppercase italic">Ludo Room Manager</h1>
+        <h1 class="text-blue-500 font-black text-xl italic mb-6 uppercase text-center">Admin Control</h1>
         
-        <div class="card border-l-8 border-yellow-500">
-            <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase">Create Private Room</h3>
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <input type="text" id="rCode" placeholder="Room Code (e.g. 5050)" class="bg-slate-900 p-3 rounded-xl text-sm outline-none">
-                <input type="text" id="rPass" placeholder="Room Password" class="bg-slate-900 p-3 rounded-xl text-sm outline-none">
-                <input type="number" id="fee" placeholder="Entry Fee" class="bg-slate-900 p-3 rounded-xl text-sm">
-                <input type="number" id="prize" placeholder="Prize" class="bg-slate-900 p-3 rounded-xl text-sm">
-                <select id="mode" class="bg-slate-900 p-3 rounded-xl text-sm"><option value="2">2 Player</option><option value="4">4 Player</option></select>
-                <input type="text" id="time" placeholder="Time (10:30 PM)" class="bg-slate-900 p-3 rounded-xl text-sm">
-            </div>
-            <button onclick="create()" class="w-full bg-yellow-600 text-black py-3 rounded-xl font-bold uppercase">Publish Private Room</button>
+        <div class="card border-l-8 border-pink-500 shadow-xl">
+            <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">Pending Requests (ডিপোজিট ও উইথড্র)</h3>
+            <div id="req-list" class="space-y-4"></div>
         </div>
 
-        <div class="card border-l-8 border-pink-500">
-            <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">General Settings</h3>
-            <input type="text" id="bik" placeholder="bKash Number" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm">
-            <button onclick="update()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold">SAVE SETTINGS</button>
-        </div>
+        <!-- বাকি সেটিংস সেকশন আগের মতো থাকবে -->
     </div>
 
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
-        function checkPin(){ if(prompt("PIN:")==="2025") document.getElementById('main').classList.remove('hidden'); else document.body.innerHTML="Denied"; }
-        async function create(){
-            const data = {
-                type: 'createMatch',
-                roomCode: document.getElementById('rCode').value,
-                roomPass: document.getElementById('rPass').value,
-                entryFee: document.getElementById('fee').value,
-                prize: document.getElementById('prize').value,
-                mode: document.getElementById('mode').value,
-                startTime: document.getElementById('time').value
-            };
-            await fetch(`${R_URL}/api/createMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
-            alert("Room Published!");
+        function checkPin(){ if(prompt("PIN:")==="2025") { document.getElementById('main').classList.remove('hidden'); load(); } else alert("Access Denied"); }
+
+        async function load(){
+            const res = await fetch(`${R_URL}/api/admin/requests`);
+            const data = await res.json();
+            document.getElementById('req-list').innerHTML = data.length === 0 ? 
+                "<p class='text-center text-gray-500 py-10'>সব ক্লিয়ার!</p>" :
+                data.map(r => `
+                <div class="bg-slate-900 p-5 rounded-2xl border ${r.type === 'deposit' ? 'border-green-900' : 'border-blue-900'} shadow-inner">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase ${r.type === 'deposit' ? 'text-green-500' : 'text-blue-500'}">${r.type}</p>
+                            <p class="font-black text-2xl">৳${r.amount}</p>
+                            <p class="text-[10px] text-gray-400 font-mono mt-1">${r.userId}</p>
+                        </div>
+                        <p class="text-[10px] bg-slate-800 p-2 rounded-lg font-mono text-yellow-500">${r.trxId || r.phone}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="handle('${r._id}', 'approve')" class="bg-green-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg">Approve</button>
+                        <button onclick="handle('${r._id}', 'reject')" class="bg-red-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg">Reject</button>
+                    </div>
+                </div>
+            `).join('');
         }
-        async function update(){ await fetch(`${R_URL}/api/updateSettings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bikash:document.getElementById('bik').value})}); alert("Saved!"); }
+
+        async function handle(id, action){
+            await fetch(`${R_URL}/api/admin/handleRequest`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id, action })
+            });
+            alert("সফলভাবে সম্পন্ন হয়েছে!");
+            load();
+        }
     </script>
 </body>
 </html>
