@@ -21,38 +21,49 @@ async function run() {
     const users = db.collection("users");
     const settings = db.collection("settings");
 
-    // --- টুর্নামেন্ট টাইম মনিটর (বাংলাদেশ সময় অনুযায়ী) ---
+    // --- সময় পরিষ্কার করার ফাংশন (যাতে 08:40 PM এবং 8:40 PM একই হয়) ---
+    function normalizeTime(timeStr) {
+        return timeStr.replace(/[:\s\.]/g, '').toUpperCase().trim();
+    }
+
+    // --- টুর্নামেন্ট অটো-মনিটর (প্রতি ১৫ সেকেন্ডে চেক করবে) ---
     setInterval(async () => {
         const now = new Date();
         const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
         
-        // বর্তমান সময় ফরম্যাট করা (যেমন: 10:30 PM)
-        const currentTime = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-
-        // ১ মিনিট পরের সময় বের করা (নোটিফিকেশনের জন্য)
+        // বর্তমান সময় ফরম্যাট (যেমন: 8:40 AM)
+        const currentTimeRaw = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const currentTime = normalizeTime(currentTimeRaw);
+        
+        // ১ মিনিট পরের সময়
         const oneMinLaterDate = new Date(bdTime.getTime() + 60000);
-        const oneMinLater = oneMinLaterDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const oneMinLaterRaw = oneMinLaterDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const oneMinLater = normalizeTime(oneMinLaterRaw);
 
-        // ১. নোটিফিকেশন পাঠানো (১ মিনিট আগে)
-        const upcomingMatches = await matches.find({ status: "open", startTime: oneMinLater }).toArray();
+        // ১. ১ মিনিট আগের নোটিফিকেশন পাঠানো
+        const upcomingMatches = await matches.find({ status: "open" }).toArray();
         upcomingMatches.forEach(m => {
-            io.to(m._id.toString()).emit("oneMinWarning", { msg: "আপনার ম্যাচ ১ মিনিট পর শুরু হবে! তৈরি থাকুন।" });
+            if (normalizeTime(m.startTime) === oneMinLater) {
+                io.to(m._id.toString()).emit("oneMinWarning", { msg: "আপনার ম্যাচ ১ মিনিট পর শুরু হবে!" });
+            }
         });
 
         // ২. গেম স্টার্ট করা (ঠিক সময়ে)
-        const matchesToStart = await matches.find({ status: "open", startTime: currentTime }).toArray();
-        for (let m of matchesToStart) {
-            await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
-            io.to(m._id.toString()).emit("gameStartNow", { matchId: m._id, roomCode: m.roomCode });
-            console.log("Started Match: " + m.startTime);
+        const openMatches = await matches.find({ status: "open" }).toArray();
+        for (let m of openMatches) {
+            if (normalizeTime(m.startTime) === currentTime) {
+                await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
+                // রুমের সবাইকে সিগন্যাল পাঠানো
+                io.to(m._id.toString()).emit("gameStartNow", { matchId: m._id.toString(), roomCode: m.roomCode });
+                console.log("Started Match: " + m.startTime);
+            }
         }
-    }, 20000); // প্রতি ২০ সেকেন্ডে চেক করবে
+    }, 15000);
 
     // APIs
     app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));
     app.post("/api/createMatch", async (req, res) => {
-        const { entryFee, prize, mode, startTime, roomCode } = req.body;
-        await matches.insertOne({ entryFee: parseInt(entryFee), prize: parseInt(prize), mode: parseInt(mode), startTime, roomCode, players: [], status: "open", date: new Date() });
+        await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
         res.json({ success: true });
     });
     app.post("/api/joinMatch", async (req, res) => {
@@ -69,9 +80,13 @@ async function run() {
         res.json({ balance: u ? u.balance : 0 });
     });
     app.get("/api/settings", async (req, res) => res.json(await settings.findOne({id:"config"}) || {bikash:"017XXXXXXXX"}));
+    app.post("/api/updateSettings", async (req, res) => { await settings.updateOne({id:"config"},{$set:req.body},{upsert:true}); res.json({success:true}); });
 
     io.on("connection", (socket) => {
-        socket.on("joinRoom", (id) => socket.join(id));
+        socket.on("joinRoom", (id) => {
+            socket.join(id);
+            console.log("User joined room: " + id);
+        });
         socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
     });
 
