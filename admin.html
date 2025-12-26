@@ -2,87 +2,199 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Admin -Tournament Manager</title>
+    <title>Ludo Master Admin - SN</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>body{background:#0f172a;color:white;font-family:sans-serif;}.card{background:#1e293b;border-radius:24px;padding:20px;border:1px solid #334155;margin-bottom:20px;}</style>
+    <style>
+        body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; }
+        .admin-card { background: #1e293b; border-radius: 24px; padding: 20px; border: 1px solid #334155; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        input, select { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; outline: none; }
+        input:focus { border-color: #3b82f6 !important; }
+    </style>
 </head>
-<body class="p-4" onload="checkPin()">
-    <div id="main" class="hidden max-w-lg m-auto pb-20">
-        <h1 class="text-blue-500 font-black text-xl italic mb-6 uppercase text-center">Master Control</h1>
-        
-        <!-- Host Tournament -->
-        <div class="card border-l-8 border-yellow-500 shadow-xl">
-            <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase italic">🏆 Host Tournament</h3>
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <input type="number" id="fee" placeholder="Entry Fee" class="bg-slate-900 p-3 rounded-xl text-sm outline-none">
-                <input type="number" id="prize" placeholder="Prize" class="bg-slate-900 p-3 rounded-xl text-sm outline-none">
-                <select id="mode" class="bg-slate-900 p-3 rounded-xl text-sm"><option value="2">2 Player</option><option value="4">4 Player</option></select>
-                <input type="text" id="time" placeholder="Time (9:30 PM)" class="bg-slate-900 p-3 rounded-xl text-sm">
+<body class="p-4 pb-24" onload="checkPin()">
+
+    <!-- Login Screen -->
+    <div id="login-box" class="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center p-6">
+        <div class="admin-card w-full max-w-sm text-center">
+            <h2 class="text-xl font-bold text-blue-500 mb-6 uppercase tracking-widest">Admin Access</h2>
+            <input type="password" id="pin" placeholder="ENTER PIN" class="w-full p-4 rounded-xl text-center text-2xl mb-4 tracking-[10px]">
+            <button onclick="login()" class="w-full bg-blue-600 py-4 rounded-xl font-bold uppercase shadow-lg shadow-blue-900/40">Open Dashboard</button>
+        </div>
+    </div>
+
+    <div id="main-content" class="hidden max-w-lg m-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-lg font-black text-blue-400 italic uppercase">Master Control</h1>
+            <button onclick="load()" class="bg-slate-800 p-2 rounded-full">🔄</button>
+        </div>
+
+        <!-- 1. Host Tournament Section -->
+        <div class="admin-card border-l-8 border-yellow-500">
+            <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase italic">🏆 Host New Match</h3>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                    <label class="text-[10px] text-gray-400">Entry Fee (৳)</label>
+                    <input type="number" id="fee" class="w-full p-3 rounded-xl mt-1">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400">Prize Pool (৳)</label>
+                    <input type="number" id="prize" class="w-full p-3 rounded-xl mt-1">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400">Mode</label>
+                    <select id="mode" class="w-full p-3 rounded-xl mt-1">
+                        <option value="2">2 Players</option>
+                        <option value="4">4 Players</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400">Start Time (e.g. 8:40 AM)</label>
+                    <input type="text" id="time" placeholder="8:40 AM" class="w-full p-3 rounded-xl mt-1">
+                </div>
             </div>
-            <button onclick="createMatch()" class="w-full bg-yellow-600 text-black py-3 rounded-xl font-bold uppercase text-xs">Publish Match</button>
+            <button onclick="createMatch()" class="w-full bg-yellow-600 text-black py-3 rounded-xl font-bold uppercase text-xs">Publish Tournament</button>
         </div>
 
-        <!-- Manage Matches (Delete System) -->
-        <div class="card border-l-8 border-blue-500">
-            <h3 class="text-xs font-bold text-blue-500 mb-4 uppercase">Manage Tournaments (ম্যাচ রিমুভ)</h3>
-            <div id="match-list-admin" class="space-y-3"></div>
+        <!-- 2. Pending Deposit/Withdraw Requests -->
+        <div class="admin-card border-l-8 border-pink-500">
+            <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">💰 Payment Requests</h3>
+            <div id="req-list" class="space-y-3">
+                <p class="text-center text-gray-600 py-5 text-xs italic">Loading...</p>
+            </div>
         </div>
 
-        <!-- Deposit Requests -->
-        <div class="card border-l-8 border-pink-500 shadow-xl">
-            <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">Payment Requests</h3>
-            <div id="req-list" class="space-y-3"></div>
+        <!-- 3. Manage Active Matches (Delete Option) -->
+        <div class="admin-card border-l-8 border-blue-500">
+            <h3 class="text-xs font-bold text-blue-500 mb-4 uppercase">🎮 Manage Lobby</h3>
+            <div id="active-matches" class="space-y-2"></div>
         </div>
 
-        <!-- Settings -->
-        <div class="card border-l-8 border-cyan-500">
-            <h3 class="text-xs font-bold text-cyan-400 mb-4 uppercase">Settings</h3>
-            <input type="text" id="bik" placeholder="bKash Number" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm">
-            <button onclick="updateSet()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save</button>
+        <!-- 4. User Referral & Balance List -->
+        <div class="admin-card border-l-8 border-green-500">
+            <h3 class="text-xs font-bold text-green-500 mb-4 uppercase">👥 Users & Referrals</h3>
+            <div id="user-list" class="space-y-2 max-h-60 overflow-y-auto text-[10px]"></div>
+        </div>
+
+        <!-- 5. General Settings -->
+        <div class="admin-card border-l-8 border-cyan-500">
+            <h3 class="text-xs font-bold text-cyan-500 mb-4 uppercase font-black">System Settings</h3>
+            <label class="text-[10px] text-gray-400">bKash Number:</label>
+            <input type="text" id="set-bikash" class="w-full p-3 rounded-xl mb-3 text-sm">
+            <label class="text-[10px] text-gray-400">WhatsApp helpline:</label>
+            <input type="text" id="set-wa" class="w-full p-3 rounded-xl mb-3 text-sm">
+            <label class="text-[10px] text-gray-400">Refer Bonus (৳):</label>
+            <input type="number" id="set-bonus" class="w-full p-3 rounded-xl mb-4 text-sm">
+            <button onclick="updateSettings()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save Settings</button>
         </div>
     </div>
 
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
-        function checkPin(){ if(prompt("PIN:")==="2025") { document.getElementById('main').classList.remove('hidden'); load(); } else document.body.innerHTML="Denied"; }
-        
-        async function load(){
-            // Load Requests
+
+        function login() {
+            if(document.getElementById('pin').value === "2025") {
+                document.getElementById('login-box').style.display = 'none';
+                document.getElementById('main-content').classList.remove('hidden');
+                load();
+            } else { alert("Wrong PIN!"); }
+        }
+
+        async function load() {
+            // ১. রিকোয়েস্ট লোড
             const res = await fetch(`${R_URL}/api/admin/requests`);
-            const data = await res.json();
-            document.getElementById('req-list').innerHTML = data.map(r => `
-                <div class="bg-slate-950 p-4 rounded-xl flex justify-between items-center border border-slate-700">
-                    <div><p class="font-bold text-white">৳${r.amount}</p><p class="text-[9px] text-blue-400 uppercase">${r.userId}</p></div>
-                    <div class="flex gap-2">
-                        <button onclick="handle('${r._id}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-[10px]">Approve</button>
-                        <button onclick="handle('${r._id}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-[10px]">Reject</button>
+            const requests = await res.json();
+            document.getElementById('req-list').innerHTML = requests.length === 0 ? "<p class='text-center py-4 text-gray-500 text-[10px]'>NO REQUESTS</p>" : 
+            requests.map(r => `
+                <div class="bg-slate-900 p-4 rounded-2xl flex justify-between items-center border border-slate-800">
+                    <div>
+                        <p class="font-bold text-white uppercase text-[10px] ${r.type==='deposit'?'text-pink-500':'text-blue-500'}">${r.type}</p>
+                        <p class="font-black text-white text-lg">৳${r.amount}</p>
+                        <p class="text-[9px] text-gray-400 uppercase font-mono">${r.userId} | ${r.trxId || r.phone}</p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="handleReq('${r._id}', 'approve')" class="bg-green-600 text-white px-4 py-1 rounded-lg text-[9px] font-bold uppercase">Approve</button>
+                        <button onclick="handleReq('${r._id}', 'reject')" class="bg-red-600 text-white px-4 py-1 rounded-lg text-[9px] font-bold uppercase">Reject</button>
                     </div>
                 </div>
             `).join('');
 
-            // Load All Matches for Delete
-            const mRes = await fetch(`${R_URL}/api/admin/allMatches`);
-            const mData = await mRes.json();
-            document.getElementById('match-list-admin').innerHTML = mData.map(m => `
-                <div class="bg-slate-950 p-3 rounded-xl flex justify-between items-center border border-slate-700">
-                    <div><p class="text-white text-xs font-bold">৳${m.prize} (${m.startTime})</p><p class="text-[8px] uppercase text-gray-500">${m.status}</p></div>
-                    <button onclick="deleteMatch('${m._id}')" class="bg-red-900 text-red-200 px-3 py-1 rounded text-[10px] border border-red-500">Delete</button>
+            // ২. লবি ম্যাচ লোড (ডিলিট করার জন্য)
+            const mRes = await fetch(`${R_URL}/api/getMatches`);
+            const matches = await mRes.json();
+            document.getElementById('active-matches').innerHTML = matches.map(m => `
+                <div class="bg-slate-900 p-3 rounded-xl flex justify-between items-center border border-slate-800">
+                    <p class="text-xs">৳${m.prize} (${m.startTime}) - ${m.players.length}/${m.mode}</p>
+                    <button onclick="deleteMatch('${m._id}')" class="text-[9px] text-red-500 font-bold border border-red-500 px-2 py-1 rounded">DELETE</button>
                 </div>
             `).join('');
 
+            // ৩. ইউজার লিস্ট লোড
+            const uRes = await fetch(`${R_URL}/api/admin/users`);
+            const users = await uRes.json();
+            document.getElementById('user-list').innerHTML = users.map(u => `
+                <div class="flex justify-between border-b border-slate-800 py-2">
+                    <span class="text-blue-300">${u.userId}</span>
+                    <span class="text-yellow-500">Refers: ${u.referCount}</span>
+                    <span class="text-green-500 font-bold">৳${u.balance}</span>
+                </div>
+            `).join('');
+
+            // ৪. সেটিংস লোড
             const sRes = await fetch(`${R_URL}/api/settings`);
             const sData = await sRes.json();
-            document.getElementById('bik').value = sData.bikash || "";
+            document.getElementById('set-bikash').value = sData.bikash || "";
+            document.getElementById('set-wa').value = sData.wa || "";
+            document.getElementById('set-bonus').value = sData.referBonus || 10;
         }
 
-        async function deleteMatch(id){ if(confirm("ম্যাচটি ডিলিট করতে চান?")){ await fetch(`${R_URL}/api/admin/deleteMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); alert("Deleted!"); load(); } }
-        async function handle(id, action){ await fetch(`${R_URL}/api/admin/handleRequest`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id, action})}); alert(action.toUpperCase()); load(); }
-        async function createMatch(){
-            const fee=document.getElementById('fee').value; const prize=document.getElementById('prize').value; const mode=document.getElementById('mode').value; const time=document.getElementById('time').value;
-            await fetch(`${R_URL}/api/createMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entryFee:fee, prize, mode, startTime:time})});
-            alert("Match Created!"); load();
+        async function createMatch() {
+            const fee = document.getElementById('fee').value;
+            const prize = document.getElementById('prize').value;
+            const mode = document.getElementById('mode').value;
+            let startTime = document.getElementById('time').value.toUpperCase().replace(/\./g, '').trim();
+
+            if(!fee || !prize || !startTime) return alert("All fields required!");
+
+            await fetch(`${R_URL}/api/createMatch`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ entryFee: fee, prize, mode, startTime, roomCode: Math.floor(1000+Math.random()*9000) })
+            });
+            alert("Tournament Published!"); load();
         }
-        async function updateSet(){ await fetch(`${R_URL}/api/updateSettings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bikash:document.getElementById('bik').value})}); alert("Saved!"); }
+
+        async function deleteMatch(id) {
+            if(confirm("ম্যাচটি ডিলিট করতে চান?")) {
+                await fetch(`${R_URL}/api/admin/deleteMatch`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id })
+                });
+                alert("Deleted!"); load();
+            }
+        }
+
+        async function handleReq(id, action) {
+            await fetch(`${R_URL}/api/admin/handleRequest`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id, action })
+            });
+            alert("Success: " + action.toUpperCase()); load();
+        }
+
+        async function updateSettings() {
+            await fetch(`${R_URL}/api/updateSettings`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    bikash: document.getElementById('set-bikash').value, 
+                    wa: document.getElementById('set-wa').value,
+                    referBonus: document.getElementById('set-bonus').value 
+                })
+            });
+            alert("System Settings Saved!"); load();
+        }
     </script>
 </body>
-</html>
+                </html>
