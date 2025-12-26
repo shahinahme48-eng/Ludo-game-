@@ -12,79 +12,91 @@
         .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
         .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
         .piece { width: 70%; height: 70%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; }
+        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
+        .notif-bar { position: fixed; top: 0; left: 0; width: 100%; background: #ff3838; color: white; text-align: center; padding: 15px; font-weight: bold; z-index: 2000; display: none; animation: slideDown 0.5s; }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body class="pb-24">
+    <div id="notif-bar" class="notif-bar">🔔 আপনার ম্যাচ ১ মিনিট পর শুরু হবে!</div>
+
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
-        const userId = localStorage.getItem('L_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('L_ID', userId);
+        const userId = localStorage.getItem('SN_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('SN_ID', userId);
         const socket = io(R_URL);
+        let currentRoom = "global";
 
-        async function loadBal(){
-            const res = await fetch(`${R_URL}/api/balance?userId=${userId}`);
-            const data = await res.json();
-            document.getElementById('balance').innerText = data.balance || 0;
-        }
+        socket.on("connect", () => { document.getElementById('status-msg').innerText = "Online 🟢"; });
 
-        async function loadLobby(){
-            const res = await fetch(`${R_URL}/api/getMatches`);
-            const data = await res.json();
-            const div = document.getElementById('match-list');
-            div.innerHTML = data.length === 0 ? "<p class='text-center py-20 text-gray-400'>কোন টুর্নামেন্ট নেই</p>" : 
-            data.map(m => `
-                <div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3">
-                    <div>
-                        <p class="font-black text-gray-800 text-lg uppercase italic">Prize: ৳${m.prize}</p>
-                        <p class="text-[9px] font-bold text-blue-600 uppercase tracking-widest">${m.players.length}/${m.mode} Joined | ${m.startTime}</p>
-                    </div>
-                    <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase shadow-md active:scale-90">JOIN (৳${m.entryFee})</button>
-                </div>
-            `).join('');
-        }
+        // ১ মিনিট আগের নোটিফিকেশন
+        socket.on("oneMinWarning", (data) => {
+            const bar = document.getElementById('notif-bar');
+            bar.innerText = data.msg;
+            bar.style.display = 'block';
+            setTimeout(() => bar.style.display = 'none', 15000);
+        });
+
+        // গেম স্টার্ট
+        socket.on("gameStartNow", (data) => {
+            alert("🚀 টুর্নামেন্ট শুরু হয়েছে! শুভকামনা।");
+            currentRoom = data.matchId;
+            showTab('game-tab');
+        });
 
         async function joinMatch(id) {
-            const res = await fetch(`${R_URL}/api/joinMatch`, { 
-                method:'POST', 
-                headers:{'Content-Type':'application/json'}, 
-                body:JSON.stringify({matchId:id, userId}) 
-            });
-            if(res.ok){ 
-                alert("জয়েন সফল হয়েছে!"); 
-                loadLobby(); 
-                loadBal(); 
-            } else { 
-                const d = await res.json(); alert(d.error); 
-            }
+            const res = await fetch(`${R_URL}/api/joinMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId:id, userId}) });
+            if(res.ok) {
+                alert("জয়েন সফল! পেজ কাটবেন না, সময় হওয়া পর্যন্ত অপেক্ষা করুন।");
+                socket.emit("joinRoom", id); // রুমে জয়েন করা যাতে সিগন্যাল পাওয়া যায়
+                currentRoom = id;
+                loadBal(); loadLobby();
+            } else { const d = await res.json(); alert(d.error); }
         }
 
-        // বাকি বেসিক ফাংশন (init, showTab, createBoard, roll)
-        async function init(){
-            createBoard(); loadBal();
-            document.getElementById('uid').innerText = "ID: " + userId;
-            const res = await fetch(`${R_URL}/api/settings`);
-            const data = await res.json();
-            document.getElementById('d-bk').innerText = data.bikash || "017XXXXXXXX";
-            socket.on("connect", () => { document.getElementById('status-msg').innerText = "Online 🟢"; });
+        // বাকি কোড আগের মতোই থাকবে (createBoard, roll, loadLobby, loadBal, init, showTab)
+        function createBoard() {
+            const b = document.getElementById('board'); b.innerHTML = "";
+            for(let i=0; i<225; i++) {
+                let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell'; d.id=`c-${r}-${c}`;
+                if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow'); else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
+                b.appendChild(d);
+            }
+            const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);};
+            addP(1,1,'green'); addP(1,10,'yellow'); addP(10,1,'red'); addP(10,10,'blue');
         }
+        async function loadLobby(){ const res=await fetch(`${R_URL}/api/getMatches`); const data=await res.json(); document.getElementById('match-list').innerHTML=data.length===0?"<p class='text-center py-20 uppercase font-bold text-xs'>No Active Matches</p>":data.map(m=>`<div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3"><div><p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase">${m.players.length}/${m.mode} Joined | ${m.startTime}</p></div><button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase shadow-md">JOIN</button></div>`).join(''); }
+        async function loadBal(){ const res = await fetch(`${R_URL}/api/balance?userId=${userId}`); const data = await res.json(); document.getElementById('balance').innerText = data.balance || 0; }
         function showTab(id){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab')); document.getElementById(id).classList.add('active-tab'); if(id==='lobby-tab') loadLobby(); }
-        function createBoard(){ const b = document.getElementById('board'); b.innerHTML = ""; for(let i=0; i<225; i++) { let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell'; d.id=`c-${r}-${c}`; if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow'); else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue'); b.appendChild(d); } const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);}; addP(1,1,'green'); addP(1,10,'yellow'); addP(10,1,'red'); addP(10,10,'blue'); }
-        function roll() { const v = Math.floor(Math.random() * 6) + 1; document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v]; }
+        async function init(){ createBoard(); loadBal(); document.getElementById('uid').innerText="ID: "+userId; const res=await fetch(`${R_URL}/api/settings`); const data=await res.json(); document.getElementById('d-bk').innerText=data.bikash; }
         window.onload = init;
+        function roll() { const v = Math.floor(Math.random() * 6) + 1; document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v]; }
     </script>
 
-    <!-- UI HTML -->
+    <!-- Header & Tabs (অপরিবর্তিত) -->
     <div class="bg-blue-600 text-white p-4 flex justify-between shadow sticky top-0 z-50">
         <div><h1 class="font-bold text-sm uppercase">Ludo Royal</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5 tracking-widest">...</p></div>
         <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
     </div>
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
-        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4 border"><button onclick="roll()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl">🎲</button><div id="status-msg" class="text-[10px] font-bold text-blue-600 uppercase italic">Online 🟢</div></div>
+        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4 border">
+            <button onclick="roll()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl">🎲</button>
+            <div id="status-msg" class="text-[10px] font-bold text-blue-600 uppercase">Connecting...</div>
+        </div>
     </div>
     <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
-    <div id="wallet-tab" class="tab-content p-4 text-center"><div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500"><p id="d-bk" class="font-black text-xl text-pink-700 mb-4 tracking-tighter italic">Loading...</p><button onclick="showTab('lobby-tab')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold uppercase shadow-lg">GO TO LOBBY</button></div></div>
-    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50"><button onclick="showTab('game-tab')" class="font-bold text-[10px]">PLAY</button><button onclick="showTab('lobby-tab')" class="font-bold text-[10px]">LOBBY</button><button onclick="showTab('wallet-tab')" class="font-bold text-[10px]">WALLET</button></div>
+    <div id="wallet-tab" class="tab-content p-4 text-center">
+        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500">
+            <p id="d-bk" class="font-black text-xl text-pink-700 mb-4 tracking-tighter italic font-mono">Loading...</p>
+            <button onclick="showTab('lobby-tab')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">GO TO LOBBY</button>
+        </div>
+    </div>
+    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
+        <button onclick="showTab('game-tab')" class="font-bold text-[10px]">PLAY</button>
+        <button onclick="showTab('lobby-tab')" class="font-bold text-[10px]">LOBBY</button>
+        <button onclick="showTab('wallet-tab')" class="font-bold text-[10px]">WALLET</button>
+    </div>
 </body>
 </html>
