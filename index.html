@@ -2,98 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Royal Pro - Turn Based</title>
+    <title>Ludo Royal Pro</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --red: #ff3b3b; --green: #00c853; --yellow: #ffea00; --blue: #2979ff; }
-        body { background: #f3f4f6; font-family: sans-serif; }
-        #board { display: grid; grid-template-columns: repeat(15, 1fr); width: 94vw; height: 94vw; max-width: 420px; margin: auto; background: #fff; border: 5px solid #333; position: relative; border-radius: 10px; overflow: hidden; }
+        :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
+        body { background: #f3f4f6; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 94vw; height: 94vw; max-width: 420px; margin: auto; background: #fff; border: 4px solid #333; overflow: hidden; position: relative; border-radius: 10px; }
         .cell { border: 0.1px solid #ddd; position: relative; display: flex; align-items: center; justify-content: center; }
-        .red { background: var(--red); } .green { background: var(--green); } .yellow { background: var(--yellow); } .blue { background: var(--blue); }
-        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.3); position: absolute; z-index: 100; transition: 0.4s; cursor: pointer; }
+        .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
+        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; transition: 0.4s; }
         .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
         .tab-content { display: none; } .active-tab { display: block !important; }
-        .my-turn-border { border: 5px solid #00c853 !important; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body class="pb-24">
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
-        const userId = localStorage.getItem('L_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('L_ID', userId);
+        const userId = localStorage.getItem('SN_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('SN_ID', userId);
         const socket = io(R_URL);
-        
-        let currentRoom = "global";
-        let currentDice = 0;
-        let isMyTurn = false;
-        const moveSnd = new Audio('https://www.soundjay.com/buttons/sounds/button-20.mp3');
 
-        const path = [[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,5],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
-        let gutiPos = { green: [-1,-1,-1,-1], red: [-1,-1,-1,-1], yellow: [-1,-1,-1,-1], blue: [-1,-1,-1,-1] };
-
-        socket.on("connect", () => { document.getElementById('status-msg').innerText = "Online 🟢"; });
-
-        // গেম স্টার্ট হলে টার্ন সেট করা
-        socket.on("gameStartNow", (d) => {
-            currentRoom = d.matchId;
-            isMyTurn = (d.currentTurn === userId);
-            updateStatusUI();
-            showTab('game-tab');
-            alert("🚀 ম্যাচ শুরু! প্রথম চাল: " + (isMyTurn ? "আপনার" : "প্রতিপক্ষের"));
-        });
-
-        socket.on("diceRolled", (d) => {
-            currentDice = d.value;
-            document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][d.value];
-            document.getElementById('status-msg').innerText = d.player === userId ? "গুটি চালুন!" : "প্রতিপক্ষ চাল দিচ্ছে...";
-        });
-
-        socket.on("pieceMoved", (d) => {
-            const p = document.getElementById(`piece-${d.color}-${d.index}`);
-            const cell = document.getElementById(`c-${path[d.newPos][0]}-${path[d.newPos][1]}`);
-            if(p && cell) { moveSnd.play(); cell.appendChild(p); }
-            
-            // টার্ন আপডেট
-            isMyTurn = (d.nextTurn === userId);
-            updateStatusUI();
-        });
-
-        function updateStatusUI() {
-            const msg = document.getElementById('status-msg');
-            const diceBtn = document.getElementById('dice-btn');
-            if(isMyTurn) {
-                msg.innerText = "YOUR TURN 🎲";
-                msg.style.color = "green";
-                diceBtn.classList.add('my-turn-border');
-            } else {
-                msg.innerText = "OPPONENT TURN ⏳";
-                msg.style.color = "red";
-                diceBtn.classList.remove('my-turn-border');
-            }
+        async function init(){
+            createBoard(); loadBal();
+            document.getElementById('uid').innerText = "ID: " + userId;
+            const res = await fetch(`${R_URL}/api/settings`); const data = await res.json();
+            document.getElementById('d-bk').innerText = data.bikash || "017XXXXXXXX";
+            document.getElementById('wa-btn').href = `https://wa.me/${data.wa}`;
+            socket.on("connect", () => { document.getElementById('status-msg').innerText = "ONLINE 🟢"; });
         }
 
-        function roll() {
-            if(!isMyTurn) return alert("আপনার চালের জন্য অপেক্ষা করুন!");
-            const v = Math.floor(Math.random() * 6) + 1;
-            socket.emit("rollDice", { roomId: currentRoom, value: v, player: userId });
+        async function loadBal(){
+            const res = await fetch(`${R_URL}/api/balance?userId=${userId}`); const data = await res.json();
+            document.getElementById('balance').innerText = data.balance || 0;
         }
 
-        function handleGuti(color, index) {
-            if(!isMyTurn || currentDice === 0) return;
-            let pos = gutiPos[color][index];
-            if(pos === -1 && currentDice === 6) pos = 0;
-            else if(pos !== -1) pos += currentDice;
-            else return;
-
-            gutiPos[color][index] = pos;
-            // চাল শেষ হলে সার্ভারকে জানানো (সার্ভার তখন টার্ন বদলাবে)
-            socket.emit("movePiece", { roomId: currentRoom, color, index, newPos: pos, player: userId, diceValue: currentDice });
-            currentDice = 0;
+        async function loadLobby(){
+            const res = await fetch(`${R_URL}/api/getMatches`);
+            const data = await res.json();
+            const div = document.getElementById('match-list');
+            div.innerHTML = data.length === 0 ? "<p class='text-center py-20 text-gray-400'>কোন টুর্নামেন্ট নেই</p>" : 
+            data.map(m => `
+                <div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3">
+                    <div>
+                        <p class="font-black text-gray-800 text-lg uppercase italic">Prize: ৳${m.prize}</p>
+                        <p class="text-[9px] font-bold text-blue-600 uppercase">${m.players.length}/${m.mode} Joined | ${m.startTime}</p>
+                    </div>
+                    <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase shadow-md">JOIN (৳${m.entryFee})</button>
+                </div>
+            `).join('');
         }
 
-        // বাকি বোর্ড ড্রয়িং কোড আগের মতোই থাকবে...
+        async function joinMatch(id) {
+            const res = await fetch(`${R_URL}/api/joinMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId:id, userId}) });
+            if(res.ok){ alert("জয়েন সফল!"); loadBal(); loadLobby(); } 
+            else { const d = await res.json(); alert(d.error); }
+        }
+
+        function showTab(id){
+            document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab'));
+            document.getElementById(id).classList.add('active-tab');
+            if(id==='lobby-tab') loadLobby();
+        }
+
         function createBoard() {
             const b = document.getElementById('board'); b.innerHTML = "";
             for(let i=0; i<225; i++) {
@@ -101,31 +72,36 @@
                 if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow'); else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
                 b.appendChild(d);
             }
-            const addP=(r,c,cl,i)=>{const p=document.createElement('div'); p.id=`piece-${cl}-${i}`; p.className=`piece p-${cl}`; p.onclick=()=>handleGuti(cl,i); document.getElementById(`c-${r}-${c}`).appendChild(p);};
-            addP(1,1,'green',0); addP(1,4,'green',1); addP(1,10,'yellow',0); addP(10,1,'red',0); addP(10,10,'blue',0);
+            // ১৬টি গুটি বসানো
+            const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);};
+            addP(1,1,'green');addP(1,4,'green');addP(4,1,'green');addP(4,4,'green'); addP(1,10,'yellow');addP(1,13,'yellow');addP(4,10,'yellow');addP(4,13,'yellow');
+            addP(10,1,'red');addP(10,4,'red');addP(13,1,'red');addP(13,4,'red'); addP(10,10,'blue');addP(10,13,'blue');addP(13,10,'blue');addP(13,13,'blue');
         }
-        function showTab(id){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab')); document.getElementById(id).classList.add('active-tab'); if(id==='lobby-tab') loadLobby(); }
-        async function loadLobby(){ const res=await fetch(`${R_URL}/api/getMatches`); const data=await res.json(); document.getElementById('match-list').innerHTML=data.map(m=>`<div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3"><div><p class="font-black text-gray-800 italic uppercase">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase">${m.players.length}/${m.mode} Players</p></div><button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase shadow-md">JOIN</button></div>`).join(''); }
-        async function joinMatch(id) { const res = await fetch(`${R_URL}/api/joinMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId:id, userId}) }); if(res.ok){ alert("জয়েন সফল!"); socket.emit("joinRoom", id); currentRoom = id; } else alert("ব্যালেন্স নেই!"); }
-        window.onload = () => { createBoard(); fetch(`${R_URL}/api/balance?userId=${userId}`).then(r=>r.json()).then(d=>document.getElementById('balance').innerText=d.balance||0); fetch(`${R_URL}/api/settings`).then(r=>r.json()).then(d=>document.getElementById('d-bk').innerText=d.bikash); };
+
+        function copyBk(){ navigator.clipboard.writeText(document.getElementById('d-bk').innerText); alert("Copied!"); }
+        init();
     </script>
 
-    <!-- UI অংশ (অপরিবর্তিত) -->
-    <div class="bg-blue-600 text-white p-4 flex justify-between shadow sticky top-0 z-50">
-        <h1 class="font-bold text-sm uppercase italic">Ludo Pro</h1>
+    <!-- Header & UI -->
+    <div class="bg-blue-600 text-white p-4 flex justify-between shadow-lg sticky top-0 z-50">
+        <div><h1 class="font-bold text-sm">LUDO WIN</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5">...</p></div>
         <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
     </div>
 
     <div id="game-tab" class="tab-content active-tab p-2 text-center">
         <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
-        <div class="mt-8 flex flex-col items-center">
-            <button onclick="roll()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl text-4xl flex items-center justify-center transition-all">🎲</button>
-            <div id="status-msg" class="mt-2 text-xs font-bold uppercase tracking-widest">Connecting...</div>
-        </div>
+        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4 border"><button class="w-16 h-16 bg-white rounded-2xl shadow shadow-inner text-4xl">🎲</button><p id="status-msg" class="text-[10px] font-bold text-blue-600 uppercase">Connecting...</p></div>
     </div>
-    
+
     <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
-    <div id="wallet-tab" class="tab-content p-4 text-center"><div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500"><p id="d-bk" class="font-black text-xl text-pink-700">Loading...</p></div></div>
+
+    <div id="wallet-tab" class="tab-content p-4 text-center">
+        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500">
+            <div class="bg-pink-50 p-4 rounded-xl mb-4 border cursor-pointer" onclick="copyBk()"><p id="d-bk" class="font-black text-xl text-pink-700 tracking-widest italic">Loading...</p><p class="text-[8px] text-pink-400 font-bold">Tap to copy number</p></div>
+            <button onclick="showTab('lobby-tab')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">Go to Lobby</button>
+        </div>
+        <a href="#" id="wa-btn" target="_blank" class="block mt-4 bg-green-500 text-white p-4 rounded-2xl text-center font-bold shadow">WhatsApp Help</a>
+    </div>
 
     <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
         <button onclick="showTab('game-tab')" class="font-bold text-[10px]">PLAY</button>
