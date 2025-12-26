@@ -2,70 +2,158 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Royal Cash</title>
+    <title>Ludo Royal Pro</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
-        body { background: #f3f4f6; font-family: sans-serif; }
-        #board { display: grid; grid-template-columns: repeat(15, 1fr); width: 95vw; height: 95vw; max-width: 420px; margin: auto; background: #fff; border: 4px solid #333; border-radius: 8px; overflow: hidden; }
-        .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
-        .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        .piece { width: 70%; height: 70%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; }
+        body { background: #f1f5f9; font-family: sans-serif; overflow-x: hidden; }
+        
+        /* লুডু বোর্ড ফিক্সড সিএসএস (যাতে সাদা না দেখায়) */
+        #ludo-board { 
+            display: grid; 
+            grid-template-columns: repeat(15, 1fr); 
+            grid-template-rows: repeat(15, 1fr);
+            width: 95vw; height: 95vw; max-width: 420px; max-height: 420px; 
+            margin: auto; background: #fff; border: 5px solid #333;
+            border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .cell { border: 0.1px solid #ddd; position: relative; display: flex; align-items: center; justify-content: center; }
+        .red { background-color: var(--red); } .green { background-color: var(--green); }
+        .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
+
+        /* গুটি ডিজাইন */
+        .piece { 
+            width: 75%; height: 75%; border-radius: 50%; 
+            border: 2.5px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.4); 
+            position: absolute; z-index: 10; transition: transform 0.2s;
+        }
+        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); }
+        .p-green { background: radial-gradient(circle, #58d68d, #1d8348); }
+        .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); }
+        .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
+
         .tab-content { display: none; } .active-tab { display: block !important; }
     </style>
 </head>
 <body class="pb-24">
+
+    <!-- Header -->
+    <div class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
+        <div>
+            <h1 class="font-black italic text-sm uppercase tracking-tighter">Ludo Tournament</h1>
+            <p id="display-id" class="text-[9px] bg-blue-800 px-2 rounded-full w-fit">ID: Loading...</p>
+        </div>
+        <div class="text-right">
+            <p class="text-[9px] font-bold opacity-80 uppercase">Wallet</p>
+            <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
+        </div>
+    </div>
+
+    <!-- 1. Game Tab (Board) -->
+    <div id="game-tab" class="tab-content active-tab p-2 text-center">
+        <div id="ludo-board" class="mt-4 border-white border-4 shadow-xl"></div>
+        <div class="mt-8 flex justify-center items-center gap-6 bg-white p-4 rounded-3xl shadow-sm mx-4 border">
+            <button onclick="rollDice()" id="dice-btn" class="w-20 h-20 bg-white rounded-2xl shadow-xl border-b-4 border-gray-200 text-5xl active:scale-90 transition-all">🎲</button>
+            <div id="status-msg" class="text-[10px] font-bold text-blue-600 uppercase tracking-widest italic animate-pulse">Online 🟢</div>
+        </div>
+    </div>
+
+    <!-- 2. Lobby Tab -->
+    <div id="lobby-tab" class="tab-content p-4">
+        <h2 class="font-black text-gray-800 mb-6 uppercase text-center text-sm tracking-widest italic">🏆 Tournament Lobby</h2>
+        <div id="match-list" class="space-y-4"></div>
+    </div>
+
+    <!-- 3. Wallet Tab -->
+    <div id="wallet-tab" class="tab-content p-4">
+        <div class="bg-white p-6 rounded-3xl shadow-xl border-t-8 border-pink-500">
+            <p id="display-bikash" class="font-black text-xl text-pink-700 text-center mb-4 bg-pink-50 p-3 rounded-xl border italic tracking-tighter">017XXXXXXXX</p>
+            <input type="number" id="amt" placeholder="Amount (৳)" class="w-full border p-4 rounded-2xl mb-3 outline-none">
+            <input type="text" id="trx" placeholder="Transaction ID" class="w-full border p-4 rounded-2xl mb-4 outline-none">
+            <button onclick="handleMoney()" class="w-full bg-pink-600 text-white py-4 rounded-2xl font-bold shadow-lg">SUBMIT DEPOSIT</button>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
+        <button onclick="showTab('game-tab')" class="font-bold text-[10px] uppercase">Game</button>
+        <button onclick="showTab('lobby-tab')" class="font-bold text-[10px] uppercase">Lobby</button>
+        <button onclick="showTab('wallet-tab')" class="font-bold text-[10px] uppercase">Wallet</button>
+    </div>
+
     <script>
-        const R_URL = "https://ludo-pro-engine.onrender.com"; // আপনার রেন্ডার লিঙ্ক
-        const userId = localStorage.getItem('SN_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('SN_ID', userId);
+        const R_URL = "https://ludo-pro-engine.onrender.com";
+        const userId = localStorage.getItem('L_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('L_ID', userId);
         const socket = io(R_URL);
 
-        async function init(){
-            createBoard(); loadBal();
-            document.getElementById('uid').innerText = "ID: " + userId;
-            const res = await fetch(`${R_URL}/api/settings`);
-            const data = await res.json();
-            document.getElementById('d-bk').innerText = data.bikash || "Update in Admin";
+        function createBoard() {
+            const b = document.getElementById('ludo-board');
+            if(!b) return;
+            b.innerHTML = "";
+            for(let i=0; i<225; i++) {
+                let r=Math.floor(i/15), c=i%15, d=document.createElement('div');
+                d.className='cell'; d.id = `c-${r}-${c}`;
+                // বোর্ড কালার (আপনার দেওয়া ছবির মতো)
+                if(r<6&&c<6) d.classList.add('green'); else if(r<6&&c>8) d.classList.add('yellow');
+                else if(r>8&&c<6) d.classList.add('red'); else if(r>8&&c>8) d.classList.add('blue');
+                if(r==7 && c>0 && c<7) d.classList.add('red'); if(r==7 && c>7 && c<14) d.classList.add('yellow');
+                if(c==7 && r>0 && r<7) d.classList.add('green'); if(c==7 && r>7 && r<14) d.classList.add('blue');
+                const safe = [[6,2],[2,8],[8,12],[12,6]]; safe.forEach(s=>{if(r==s[0]&&c==s[1])d.classList.add('safe')});
+                b.appendChild(d);
+            }
+            // ১৬টি গুটি বসানো
+            const addP = (r,c,cl) => { const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p); };
+            addP(1,1,'green'); addP(1,4,'green'); addP(4,1,'green'); addP(4,4,'green');
+            addP(1,10,'yellow'); addP(1,13,'yellow'); addP(4,10,'yellow'); addP(4,13,'yellow');
+            addP(10,1,'red'); addP(10,4,'red'); addP(13,1,'red'); addP(13,4,'red');
+            addP(10,10,'blue'); addP(10,13,'blue'); addP(13,10,'blue'); addP(13,13,'blue');
+        }
+
+        async function init() {
+            createBoard();
+            document.getElementById('display-id').innerText = "ID: " + userId;
+            loadBal();
+            try {
+                const res = await fetch(`${R_URL}/api/settings`);
+                const data = await res.json();
+                document.getElementById('display-bikash').innerText = data.bikash || "017XXXXXXXX";
+            } catch(e) {}
             socket.on("connect", () => { document.getElementById('status-msg').innerText = "Online 🟢"; });
+            socket.on("diceRolled", (data) => { document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][data.value]; });
         }
 
-        async function loadBal(){
-            const res = await fetch(`${R_URL}/api/balance?userId=${userId}`);
-            const data = await res.json();
-            document.getElementById('balance').innerText = data.balance || 0;
+        async function loadBal() {
+            try {
+                const res = await fetch(`${R_URL}/api/balance?userId=${userId}`);
+                const data = await res.json();
+                document.getElementById('balance').innerText = data.balance || 0;
+            } catch(e) {}
         }
 
-        async function loadLobby(){
-            const res = await fetch(`${R_URL}/api/getMatches`);
-            const data = await res.json();
-            const div = document.getElementById('match-list');
-            div.innerHTML = data.length === 0 ? "<p class='text-center py-20 text-gray-400'>কোন একটিভ টুর্নামেন্ট নেই</p>" : 
-            data.map(m => `
-                <div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3">
-                    <div>
-                        <p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p>
-                        <p class="text-[9px] font-bold text-blue-600 uppercase">${m.players.length}/${m.mode} Joined | ${m.startTime}</p>
+        async function loadLobby() {
+            try {
+                const res = await fetch(`${R_URL}/api/getMatches`);
+                const data = await res.json();
+                const div = document.getElementById('match-list');
+                div.innerHTML = data.length === 0 ? "<p class='text-center py-20 text-gray-400 font-bold'>ম্যাচ শুরু হয়ে গেছে বা নেই</p>" : 
+                data.map(m => `
+                    <div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3">
+                        <div>
+                            <p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p>
+                            <p class="text-[9px] font-bold text-blue-600 uppercase">${m.players.length}/${m.mode} Joined | ${m.startTime}</p>
+                        </div>
+                        <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase shadow-md">JOIN (৳${m.entryFee})</button>
                     </div>
-                    <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase shadow-md active:scale-90">JOIN (৳${m.entryFee})</button>
-                </div>
-            `).join('');
+                `).join('');
+            } catch(e) {}
         }
 
         async function joinMatch(id) {
-            const res = await fetch(`${R_URL}/api/joinMatch`, { 
-                method:'POST', 
-                headers:{'Content-Type':'application/json'}, 
-                body:JSON.stringify({matchId:id, userId}) 
-            });
-            if(res.ok){ 
-                alert("সফলভাবে জয়েন করেছেন!"); 
-                loadBal(); 
-                loadLobby(); 
-            } else { 
-                const d = await res.json(); alert(d.error); 
-            }
+            const res = await fetch(`${R_URL}/api/joinMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId:id, userId}) });
+            if(res.ok){ alert("জয়েন সফল!"); socket.emit("joinRoom", id); loadLobby(); loadBal(); } 
+            else { const d = await res.json(); alert(d.error); }
         }
 
         function showTab(id){
@@ -74,42 +162,12 @@
             if(id === 'lobby-tab') loadLobby();
         }
 
-        function createBoard(){
-            const b = document.getElementById('board'); b.innerHTML = "";
-            for(let i=0; i<225; i++) {
-                let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell';
-                if(r<6&&c<6)d.classList.add('red'); else if(r<6&&c>8)d.classList.add('green'); else if(r>8&&c<6)d.classList.add('yellow'); else if(r>8&&c>8)d.classList.add('blue');
-                b.appendChild(d);
-            }
+        function rollDice() {
+            const v = Math.floor(Math.random() * 6) + 1;
+            socket.emit("rollDice", { roomId: "global", value: v, player: userId });
         }
 
         init();
     </script>
-
-    <div class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
-        <div><h1 class="font-bold text-sm">LUDO PRO</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5 tracking-widest">...</p></div>
-        <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
-    </div>
-
-    <!-- TABS -->
-    <div id="game-tab" class="tab-content active-tab p-2 text-center">
-        <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
-        <p id="status-msg" class="mt-6 text-[10px] font-bold text-blue-600 uppercase">Connecting...</p>
-    </div>
-
-    <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
-
-    <div id="wallet-tab" class="tab-content p-4">
-        <div class="bg-white p-6 rounded-3xl shadow border-t-8 border-pink-500 text-center">
-            <p id="d-bk" class="font-black text-xl text-pink-700 mb-4 tracking-tighter">Loading...</p>
-            <button onclick="showTab('lobby-tab')" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold uppercase shadow-lg">Go to Lobby</button>
-        </div>
-    </div>
-
-    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
-        <button onclick="showTab('game-tab')" class="font-bold text-[10px]">PLAY</button>
-        <button onclick="showTab('lobby-tab')" class="font-bold text-[10px]">LOBBY</button>
-        <button onclick="showTab('wallet-tab')" class="font-bold text-[10px]">WALLET</button>
-    </div>
 </body>
 </html>
