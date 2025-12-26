@@ -2,74 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Admin - Fixed</title>
+    <title>Master Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>body{background:#0f172a;color:white;font-family:sans-serif;}.card{background:#1e293b;border-radius:24px;padding:20px;border:1px solid #334155;margin-bottom:20px;}</style>
 </head>
 <body class="p-4" onload="checkPin()">
-    <div id="main" class="hidden max-w-lg m-auto pb-20">
+    <div id="main" class="hidden max-w-lg m-auto">
         <h1 class="text-blue-500 font-black text-xl italic mb-6 text-center uppercase">Master Control</h1>
-        
-        <div class="card border-l-8 border-yellow-500 shadow-xl">
+        <div class="card border-l-8 border-yellow-500 shadow-2xl">
             <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase">Host Tournament</h3>
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <input type="number" id="fee" placeholder="Fee" class="bg-slate-900 p-3 rounded-xl text-sm outline-none text-white">
-                <input type="number" id="prize" placeholder="Prize" class="bg-slate-900 p-3 rounded-xl text-sm outline-none text-white">
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <input type="number" id="fee" placeholder="Entry Fee" class="bg-slate-900 p-3 rounded-xl text-sm outline-none text-white">
+                <input type="number" id="prize" placeholder="Prize Pool" class="bg-slate-900 p-3 rounded-xl text-sm outline-none text-white">
                 <select id="mode" class="bg-slate-900 p-3 rounded-xl text-sm text-white"><option value="2">2 Player</option><option value="4">4 Player</option></select>
-                <input type="text" id="time" placeholder="Time" class="bg-slate-900 p-3 rounded-xl text-sm text-white">
+                <input type="text" id="time" placeholder="Time (8:40 AM)" class="bg-slate-900 p-3 rounded-xl text-sm text-white">
             </div>
             <button onclick="createMatch()" class="w-full bg-yellow-600 text-black py-3 rounded-xl font-bold uppercase text-xs">Publish Match</button>
         </div>
-
-        <div class="card border-l-8 border-blue-500">
-            <h3 class="text-xs font-bold text-blue-500 mb-4 uppercase italic">Manage Lobby (Delete Match)</h3>
-            <div id="active-matches" class="space-y-2"></div>
-        </div>
-
-        <div class="card border-l-8 border-pink-500">
-            <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">Deposit Requests</h3>
-            <div id="list" class="space-y-3"></div>
-        </div>
-
-        <div class="card border-l-8 border-green-500">
-            <h3 class="text-xs font-bold text-green-500 mb-4 uppercase">Referral List (User Info)</h3>
-            <div id="user-list" class="space-y-2 max-h-40 overflow-y-auto text-[10px]"></div>
-        </div>
-
-        <div class="card border-l-8 border-cyan-500">
-            <input type="text" id="bik" placeholder="bKash Number" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm text-white">
-            <input type="text" id="wa" placeholder="WhatsApp Number" class="bg-slate-900 p-3 rounded-xl w-full mb-4 text-sm text-white">
-            <button onclick="updateSet()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save Settings</button>
-        </div>
+        <div class="card border-l-8 border-pink-500 shadow-xl"><h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">Payment Requests</h3><div id="list" class="space-y-3"></div></div>
+        <div class="card border-l-8 border-cyan-500"><input type="text" id="bik" placeholder="bKash" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm text-white"><input type="text" id="wa" placeholder="WhatsApp" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-sm text-white"><button onclick="updateSet()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save</button></div>
     </div>
-
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
-        function checkPin(){ if(prompt("PIN:")==="2025") { document.getElementById('main').classList.remove('hidden'); load(); } else alert("Denied"); }
-        
+        function checkPin(){ if(prompt("PIN:")==="2025") { document.getElementById('main').classList.remove('hidden'); load(); } else alert("Access Denied"); }
         async function load(){
-            const res = await fetch(`${R_URL}/api/admin/requests`);
-            const data = await res.json();
-            document.getElementById('list').innerHTML = data.map(r => `<div class="bg-slate-950 p-4 rounded-2xl flex justify-between items-center shadow"><div><p class="font-bold">৳${r.amount}</p><p class="text-[9px] uppercase font-bold text-blue-400">${r.userId}</p></div><div class="flex gap-2"><button onclick="handle('${r._id}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-[10px]">Approve</button><button onclick="handle('${r._id}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-[10px]">Reject</button></div></div>`).join('');
-            
-            const mRes = await fetch(`${R_URL}/api/admin/allMatches`);
-            const mData = await mRes.json();
-            document.getElementById('active-matches').innerHTML = mData.map(m => `<div class="bg-slate-950 p-3 rounded-xl flex justify-between items-center border border-slate-800"><p class="text-xs">৳${m.prize} (${m.startTime})</p><button onclick="deleteMatch('${m._id}')" class="bg-red-900 text-white px-2 py-1 rounded text-[8px] border border-red-500">DELETE</button></div>`).join('');
-
-            const uRes = await fetch(`${R_URL}/api/admin/users`);
-            const uData = await uRes.json();
-            document.getElementById('user-list').innerHTML = uData.map(u => `<div class="flex justify-between border-b border-slate-800 py-1"><span>${u.userId}</span><span class="text-yellow-500">Refers: ${u.referCount}</span><span class="text-green-500">৳${u.balance}</span></div>`).join('');
-
-            const sRes = await fetch(`${R_URL}/api/settings`);
-            const sData = await sRes.json();
-            document.getElementById('bik').value = sData.bikash || "";
-            document.getElementById('wa').value = sData.wa || "";
+            const res = await fetch(`${R_URL}/api/admin/requests`); const data = await res.json();
+            document.getElementById('list').innerHTML = data.map(r => `<div class="bg-slate-800 p-4 rounded-2xl flex justify-between items-center shadow"><div><p class="font-bold">৳${r.amount}</p><p class="text-[9px] uppercase text-blue-400 font-bold">${r.userId}</p></div><div class="flex gap-2"><button onclick="handle('${r._id}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-[10px]">Approve</button><button onclick="handle('${r._id}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-[10px]">Reject</button></div></div>`).join('');
+            const sRes = await fetch(`${R_URL}/api/settings`); const sData = await sRes.json();
+            document.getElementById('bik').value = sData.bikash || ""; document.getElementById('wa').value = sData.wa || "";
         }
-
-        async function deleteMatch(id){ if(confirm("ডিলিট করতে চান?")){ await fetch(`${R_URL}/api/admin/deleteMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); alert("Deleted!"); load(); } }
         async function handle(id, action){ await fetch(`${R_URL}/api/admin/handleRequest`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id, action})}); alert("Success!"); load(); }
-        async function createMatch(){ await fetch(`${R_URL}/api/createMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entryFee:document.getElementById('fee').value, prize:document.getElementById('prize').value, mode:document.getElementById('mode').value, startTime:document.getElementById('time').value})}); alert("Match Created!"); load(); }
-        async function updateSet(){ await fetch(`${R_URL}/api/updateSettings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bikash:document.getElementById('bik').value, wa:document.getElementById('wa').value, referBonus: 10})}); alert("Saved!"); }
+        async function createMatch(){
+            const fee = document.getElementById('fee').value; const prize = document.getElementById('prize').value;
+            await fetch(`${R_URL}/api/createMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entryFee:fee, prize, mode:document.getElementById('mode').value, startTime:document.getElementById('time').value})});
+            alert("Match Created!"); load();
+        }
+        async function updateSet(){ await fetch(`${R_URL}/api/updateSettings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bikash:document.getElementById('bik').value, wa:document.getElementById('wa').value})}); alert("Saved!"); }
     </script>
 </body>
-    </html>
+</html>
