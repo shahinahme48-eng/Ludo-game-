@@ -20,84 +20,78 @@ async function run() {
     const matches = db.collection("matches");
     const users = db.collection("users");
     const settings = db.collection("settings");
+    const transactions = db.collection("transactions");
 
-    // --- সময় নরমাল করার ফাংশন ---
-    function cleanTime(t) {
-        return t.replace(/[:\s\.]/g, '').toUpperCase();
+    // সময় পরিষ্কার করার ফাংশন (যাতে 08:40 AM আর 8:40 AM একই হয়)
+    function normalizeTime(timeStr) {
+        if(!timeStr) return "";
+        return timeStr.replace(/[:\s\.]/g, '').replace(/^0+/, '').toUpperCase().trim();
     }
 
-    // --- টুর্নামেন্ট অটো-মনিটর (প্রতি ১০ সেকেন্ডে চেক) ---
+    // --- টুর্নামেন্ট মনিটর (প্রতি ১০ সেকেন্ডে চেক করবে) ---
     setInterval(async () => {
         const now = new Date();
         const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
         
-        const currentT = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const currentClean = cleanTime(currentT);
-
-        // ১ মিনিট পরের সময় (নোটিফিকেশনের জন্য)
+        const currentTimeRaw = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const currentTime = normalizeTime(currentTimeRaw);
+        
         bdTime.setMinutes(bdTime.getMinutes() + 1);
-        const nextT = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const nextClean = cleanTime(nextT);
+        const oneMinLaterRaw = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const oneMinLater = normalizeTime(oneMinLaterRaw);
 
-        const allMatches = await matches.find({ status: "open" }).toArray();
+        const allOpenMatches = await matches.find({ status: "open" }).toArray();
 
-        for (let m of allMatches) {
-            const matchClean = cleanTime(m.startTime);
+        for (let m of allOpenMatches) {
+            const matchTime = normalizeTime(m.startTime);
 
-            // ১. নোটিফিকেশন (১ মিনিট আগে)
-            if (matchClean === nextClean) {
+            // ১ মিনিট আগের এলার্ট
+            if (matchTime === oneMinLater) {
                 io.to(m._id.toString()).emit("oneMinWarning", { msg: "আপনার ম্যাচ ১ মিনিট পর শুরু হবে!" });
             }
 
-            // ২. গেম স্টার্ট (বর্তমান সময় >= ম্যাচের সময় এবং প্লেয়ার ২ জন)
-            if (matchClean === currentClean) {
-                if (m.players.length >= 2) {
-                    await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
-                    io.to(m._id.toString()).emit("gameStartNow", { matchId: m._id.toString(), roomCode: m.roomCode });
-                    console.log("Match Started: " + m.startTime);
-                } else {
-                    // যদি সময় হয়ে যায় কিন্তু ২ জন না থাকে, তবে ম্যাচ বাতিল/রিমুভ
-                    await matches.updateOne({ _id: m._id }, { $set: { status: "expired" } });
-                }
+            // ম্যাচ স্টার্ট (সময় হওয়া মাত্র)
+            if (matchTime === currentTime) {
+                await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
+                io.to(m._id.toString()).emit("gameStartNow", { 
+                    matchId: m._id.toString(), 
+                    roomCode: m.roomCode,
+                    prize: m.prize 
+                });
             }
         }
     }, 10000);
 
     // APIs
     app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));
-    app.post("/api/createMatch", async (req, res) => {
-        await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
-        res.json({ success: true });
-    });
+    
     app.post("/api/joinMatch", async (req, res) => {
         const { matchId, userId } = req.body;
         const match = await matches.findOne({ _id: new ObjectId(matchId) });
-        if (match.players.length >= match.mode) return res.status(400).json({ error: "ম্যাচ ফুল!" });
+        const user = await users.findOne({ userId });
+
+        if (!user || user.balance < match.entryFee) return res.status(400).json({ error: "ব্যালেন্স নেই" });
+        
         await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });
-        await matches.updateOne({ _id: new ObjectId(matchId) }, { $push: { players: userId } });
+        await matches.updateOne({ _id: new ObjectId(matchId) }, { $addToSet: { players: userId } });
         res.json({ success: true });
     });
+
     app.get("/api/balance", async (req, res) => {
         const u = await users.findOne({ userId: req.query.userId });
         res.json({ balance: u ? u.balance : 0 });
     });
-    app.get("/api/settings", async (req, res) => res.json(await settings.findOne({id:"config"}) || {bikash:"017XXXXXXXX"}));
-    app.post("/api/updateSettings", async (req, res) => { await settings.updateOne({id:"config"},{$set:req.body},{upsert:true}); res.json({success:true}); });
-    app.get("/api/admin/requests", async (req, res) => res.json(await transactions.find({status:"pending"}).toArray()));
-    app.post("/api/admin/approve", async (req, res) => {
-        const r = await transactions.findOne({_id: new ObjectId(req.body.id)});
-        if(r) {
-            await transactions.updateOne({_id: new ObjectId(req.body.id)}, {$set:{status:"approved"}});
-            await users.updateOne({userId: r.userId}, {$inc:{balance:parseInt(r.amount)}}, {upsert:true});
-        }
-        res.json({success:true});
+
+    app.post("/api/createMatch", async (req, res) => {
+        await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
+        res.json({ success: true });
     });
 
+    app.get("/api/settings", async (req, res) => res.json(await settings.findOne({id:"config"}) || {bikash:"017XXXXXXXX"}));
+    app.post("/api/updateSettings", async (req, res) => { await settings.updateOne({id:"config"},{$set:req.body},{upsert:true}); res.json({success:true}); });
+
     io.on("connection", (socket) => {
-        socket.on("joinRoom", (id) => {
-            socket.join(id);
-            console.log("Joined Room: " + id);
-        });
+        socket.on("joinRoom", (id) => socket.join(id));
         socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
     });
 
