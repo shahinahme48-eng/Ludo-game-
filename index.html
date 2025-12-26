@@ -2,21 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Royal Pro</title>
+    <title>Ludo Cash Royal - Full HD Edition</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --red: #ff3838; --green: #2ecc71; --yellow: #f1c40f; --blue: #3498db; }
-        body { background: #f3f4f6; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
-        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 94vw; height: 94vw; max-width: 420px; margin: auto; background: #fff; border: 5px solid #333; border-radius: 8px; overflow: hidden; position: relative; }
-        .cell { border: 0.1px solid #eee; position: relative; display: flex; align-items: center; justify-content: center; }
-        .red { background-color: var(--red); } .green { background-color: var(--green); } .yellow { background-color: var(--yellow); } .blue { background-color: var(--blue); }
-        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: absolute; z-index: 10; }
-        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
-        .tab-content { display: none; } .active-tab { display: block !important; }
+        :root { --red: #ff3b3b; --green: #00c853; --yellow: #ffea00; --blue: #2979ff; }
+        body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Full HD Ludo Board Design */
+        #board-container { perspective: 1000px; padding: 10px; }
+        #board { 
+            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
+            width: 95vw; height: 95vw; max-width: 440px; max-height: 440px; 
+            margin: auto; background: #fff; border: 8px solid #2c3e50; 
+            border-radius: 15px; overflow: hidden; position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: rotateX(5deg);
+        }
+        .cell { border: 0.5px solid rgba(0,0,0,0.05); position: relative; display: flex; align-items: center; justify-content: center; }
+        .red { background: var(--red); } .green { background: var(--green); } .yellow { background: var(--yellow); } .blue { background: var(--blue); }
+        
+        /* HD Piece (Guti) Design */
+        .piece { 
+            width: 80%; height: 80%; border-radius: 50%; border: 3px solid rgba(255,255,255,0.8); 
+            box-shadow: 0 8px 15px rgba(0,0,0,0.3), inset 0 -4px 6px rgba(0,0,0,0.2); 
+            position: absolute; z-index: 50; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        .p-red { background: radial-gradient(circle at 30% 30%, #ff5252, #8e0000); }
+        .p-green { background: radial-gradient(circle at 30% 30%, #69f0ae, #00701a); }
+        .p-yellow { background: radial-gradient(circle at 30% 30%, #ffff72, #fbc02d); }
+        .p-blue { background: radial-gradient(circle at 30% 30%, #82b1ff, #002984); }
+
+        .tab-content { display: none; transition: 0.3s; } .active-tab { display: block !important; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Glass Effect */
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); }
+        .safe { background-image: url('https://cdn-icons-png.flaticon.com/512/1828/1828884.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; opacity: 0.8; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 <body class="pb-24">
+
+    <!-- HD Header -->
+    <div class="bg-gradient-to-r from-blue-700 to-blue-500 text-white p-5 flex justify-between items-center shadow-2xl sticky top-0 z-50 rounded-b-3xl">
+        <div>
+            <h1 class="font-black italic text-xl tracking-tighter uppercase leading-none">Ludo Cash</h1>
+            <p id="uid" class="text-[9px] bg-white/20 px-2 py-0.5 rounded-full mt-1 font-mono">SN-...</p>
+        </div>
+        <div class="bg-white/10 p-2 rounded-2xl border border-white/20 text-right min-w-[100px]">
+            <p class="text-[8px] font-bold uppercase opacity-80">My Balance</p>
+            <p class="font-black text-xl text-yellow-300">৳ <span id="balance">0</span></p>
+        </div>
+    </div>
+
+    <!-- 1. Play Tab -->
+    <div id="game-tab" class="tab-content active-tab p-2 text-center">
+        <div id="board-container">
+            <div id="board"></div>
+        </div>
+        <div class="mt-6 flex justify-around items-center glass p-5 rounded-[40px] shadow-xl mx-4 border border-white">
+            <button onclick="roll()" id="d-btn" class="w-20 h-20 bg-white rounded-3xl shadow-2xl border-b-[10px] border-gray-200 flex items-center justify-center text-5xl active:scale-90 active:border-b-0 transition-all">🎲</button>
+            <div class="flex flex-col items-center">
+                <div id="status" class="text-[11px] font-black text-blue-700 uppercase tracking-widest bg-blue-50 px-4 py-1 rounded-full border border-blue-100">Connecting...</div>
+                <div id="dice-val-display" class="text-3xl font-black text-gray-800 mt-2"></div>
+            </div>
+            <button onclick="alert('Live Chat Active in Tournament!')" class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl shadow-inner">💬</button>
+        </div>
+    </div>
+
+    <!-- 2. Lobby Tab -->
+    <div id="lobby-tab" class="tab-content p-4">
+        <h2 class="font-black text-center mb-8 uppercase text-gray-800 tracking-widest">🏆 Elite Tournaments</h2>
+        <div id="match-list" class="space-y-5"></div>
+    </div>
+
+    <!-- 3. Wallet Tab -->
+    <div id="wallet-tab" class="tab-content p-4 space-y-6">
+        <!-- Refer Card (HD) -->
+        <div class="bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 p-6 rounded-[35px] text-white shadow-2xl border-b-[10px] border-orange-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-black text-2xl italic uppercase">Refer & Win</h3>
+                <span class="text-3xl">🎁</span>
+            </div>
+            <div class="bg-black/20 p-4 rounded-2xl border border-white/20 mb-4 text-center">
+                <p class="text-[10px] uppercase font-bold text-yellow-100">My Invite Code</p>
+                <p id="my-ref" onclick="copyText('my-ref')" class="font-black text-3xl tracking-[5px] cursor-pointer">...</p>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="in-ref" placeholder="Friend's Code" class="flex-1 p-4 rounded-2xl text-black font-bold text-sm outline-none shadow-inner">
+                <button onclick="claim()" class="bg-black text-white px-6 rounded-2xl font-black text-xs uppercase shadow-xl active:scale-95 transition">Claim</button>
+            </div>
+        </div>
+
+        <!-- Deposit & Withdraw (Side by Side HD) -->
+        <div class="grid grid-cols-2 gap-4">
+            <div class="glass p-5 rounded-[35px] shadow-2xl border-t-[10px] border-pink-500 text-center">
+                <div class="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center m-auto mb-3 shadow-inner">🏦</div>
+                <h3 class="font-black text-xs text-pink-600 uppercase mb-4 tracking-tighter">Cash In</h3>
+                <input type="number" id="amt" placeholder="৳ Amount" class="w-full bg-gray-100 p-3 rounded-xl mb-2 text-xs outline-none focus:ring-2 focus:ring-pink-300">
+                <input type="text" id="trx" placeholder="TrxID" class="w-full bg-gray-100 p-3 rounded-xl mb-4 text-xs outline-none focus:ring-2 focus:ring-pink-300">
+                <button onclick="dep()" class="w-full bg-pink-600 text-white py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-pink-200">Submit</button>
+            </div>
+            <div class="glass p-5 rounded-[35px] shadow-2xl border-t-[10px] border-blue-500 text-center">
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center m-auto mb-3 shadow-inner">💸</div>
+                <h3 class="font-black text-xs text-blue-600 uppercase mb-4 tracking-tighter">Cash Out</h3>
+                <input type="number" id="w-amt" placeholder="৳ Amount" class="w-full bg-gray-100 p-3 rounded-xl mb-2 text-xs outline-none focus:ring-2 focus:ring-blue-300">
+                <input type="text" id="w-phone" placeholder="bKash No" class="w-full bg-gray-100 p-3 rounded-xl mb-4 text-xs outline-none focus:ring-2 focus:ring-blue-300">
+                <button onclick="wit()" class="w-full bg-blue-600 text-white py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-blue-200">Request</button>
+            </div>
+        </div>
+
+        <!-- System Details -->
+        <div class="glass p-6 rounded-[35px] shadow-xl text-center border-2 border-dashed border-blue-200">
+            <p class="text-[10px] text-gray-400 font-bold uppercase mb-2">Personal bKash Number (Tap to Copy)</p>
+            <p id="d-bk" onclick="copyNum()" class="font-black text-2xl text-blue-700 tracking-widest cursor-pointer active:opacity-50 transition">Loading...</p>
+            <a href="#" id="wa" target="_blank" class="mt-5 flex items-center justify-center gap-2 w-full bg-green-500 text-white py-4 rounded-2xl font-black text-xs shadow-lg uppercase tracking-widest">
+                WhatsApp Support
+            </a>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t flex justify-around p-4 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] z-50 rounded-t-[35px]">
+        <button onclick="showTab('game-tab')" class="flex flex-col items-center gap-1 group">
+            <span class="text-2xl group-active:scale-125 transition">🎮</span><span class="text-[9px] font-black text-gray-400 group-focus:text-blue-600 uppercase">Play</span>
+        </button>
+        <button onclick="showTab('lobby-tab')" class="flex flex-col items-center gap-1 group">
+            <span class="text-2xl group-active:scale-125 transition">🏆</span><span class="text-[9px] font-black text-gray-400 group-focus:text-blue-600 uppercase">Lobby</span>
+        </button>
+        <button onclick="showTab('wallet-tab')" class="flex flex-col items-center gap-1 group">
+            <span class="text-2xl group-active:scale-125 transition">💰</span><span class="text-[9px] font-black text-gray-400 group-focus:text-blue-600 uppercase">Wallet</span>
+        </button>
+    </div>
+
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
         const userId = localStorage.getItem('SN_ID') || "SN" + Math.floor(1000 + Math.random() * 9000);
@@ -24,140 +143,96 @@
         const socket = io(R_URL);
 
         async function init(){
+            document.getElementById('uid').innerText="ID: "+userId;
+            document.getElementById('my-ref').innerText=userId;
             createBoard(); loadBal();
-            document.getElementById('uid').innerText = "ID: " + userId;
-            document.getElementById('my-ref-code').innerText = userId;
-            const res = await fetch(`${R_URL}/api/settings`);
-            const data = await res.json();
-            document.getElementById('d-bk').innerText = data.bikash;
-            socket.on("connect", () => { document.getElementById('status-msg').innerText = "Online 🟢"; });
-            socket.on("gameStartNow", (d) => { alert("গেম শুরু হয়েছে! রুম কোড: " + d.roomCode); showTab('game-tab'); });
+            try {
+                const res = await fetch(`${R_URL}/api/settings`);
+                const data = await res.json();
+                document.getElementById('d-bk').innerText = data.bikash;
+                document.getElementById('wa').href = `https://wa.me/${data.wa}?text=ID:${userId}`;
+            } catch(e) { }
+            socket.on("connect", () => { document.getElementById('status').innerText = "Online 🟢"; });
+            socket.on("diceRolled", (data) => {
+                const faces = ["⚀","⚁","⚂","⚃","⚄","⚅"];
+                document.getElementById('d-btn').innerText = faces[data.value - 1];
+                document.getElementById('dice-val-display').innerText = data.value;
+            });
         }
 
         async function loadBal(){
             const res = await fetch(`${R_URL}/api/balance?userId=${userId}`);
             const data = await res.json();
             document.getElementById('balance').innerText = data.balance || 0;
-            if (data.referClaimed) document.getElementById('refer-box').innerHTML = "✅ বোনাস নেওয়া হয়েছে!";
         }
 
         async function loadLobby(){
             const res = await fetch(`${R_URL}/api/getMatches`);
             const data = await res.json();
-            const div = document.getElementById('match-list');
-            div.innerHTML = data.length === 0 ? "<p class='text-center py-20 text-gray-400 font-bold'>কোন একটিভ ম্যাচ নেই</p>" : 
+            document.getElementById('match-list').innerHTML = data.length === 0 ? "<p class='text-center text-gray-400 py-20 uppercase font-black text-xs'>No Live Matches</p>" : 
             data.map(m => `
-                <div class="bg-white p-5 rounded-3xl shadow-md border-l-8 border-blue-600 flex justify-between items-center mb-3">
+                <div class="bg-white p-6 rounded-[35px] shadow-xl border-l-[10px] border-blue-600 flex justify-between items-center transition active:scale-95">
                     <div>
-                        <p class="font-black text-gray-800 text-lg">৳${m.prize} Prize</p>
-                        <p class="text-[9px] font-bold text-blue-600 uppercase">${m.players.length}/${m.mode} Joined | ${m.startTime}</p>
+                        <p class="text-[10px] font-black text-blue-600 uppercase mb-1 tracking-widest">${m.mode} Players Mode</p>
+                        <p class="font-black text-gray-800 text-2xl italic uppercase">৳${m.prize} Prize</p>
+                        <p class="text-[10px] text-gray-400 font-bold mt-1 uppercase">Starts: ${m.startTime}</p>
                     </div>
-                    <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-lg uppercase">JOIN (৳${m.entryFee})</button>
+                    <div class="text-right">
+                        <p class="text-[10px] font-black text-gray-400 mb-2">FEE ৳${m.entryFee}</p>
+                        <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs shadow-lg shadow-blue-200">JOIN</button>
+                    </div>
                 </div>
             `).join('');
         }
 
         async function joinMatch(id) {
-            const res = await fetch(`${R_URL}/api/joinMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId:id, userId}) });
-            if(res.ok){ alert("জয়েন সফল! টাইম হওয়া পর্যন্ত অপেক্ষা করুন।"); socket.emit("joinRoom", id); loadBal(); loadLobby(); } 
+            const res = await fetch(`${R_URL}/api/joinMatch`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ matchId: id, userId }) });
+            if(res.ok){ alert("Successfully Joined Elite Tournament!"); loadLobby(); loadBal(); }
             else { const d = await res.json(); alert(d.error); }
         }
 
         async function dep(){
             const amount = document.getElementById('amt').value; const trxId = document.getElementById('trx').value;
-            if(!amount || !trxId) return alert("সব তথ্য দিন");
-            await fetch(`${R_URL}/api/deposit`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, amount, trxId }) });
-            alert("Request Sent!");
+            if(!amount || !trxId) return alert("Please fill all fields!");
+            await fetch(`${R_URL}/api/deposit`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, amount, trxId, type: 'deposit' }) });
+            alert("Deposit Request Received! Admin is verifying.");
         }
 
         async function wit(){
-            const amount = document.getElementById('wamt').value; const phone = document.getElementById('wphone').value;
-            if(!amount) return alert("টাকার পরিমাণ দিন");
-            const res = await fetch(`${R_URL}/api/withdraw`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, amount, phone }) });
-            if(res.ok) { alert("উইথড্র রিকোয়েস্ট পাঠানো হয়েছে!"); loadBal(); } else alert("ব্যালেন্স কম!");
+            const amount = document.getElementById('w-amt').value; const phone = document.getElementById('w-phone').value;
+            if(!amount || !phone) return alert("Fill Info!");
+            const res = await fetch(`${R_URL}/api/withdraw`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, amount, phone, type: 'withdraw' }) });
+            if(res.ok){ alert("Withdrawal in Process!"); loadBal(); } else { const d = await res.json(); alert(d.error); }
         }
 
-        function showTab(id){
-            document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab'));
-            document.getElementById(id).classList.add('active-tab');
-            if(id === 'lobby-tab') loadLobby();
+        async function claim(){
+            const code = document.getElementById('in-ref').value;
+            const res = await fetch(`${R_URL}/api/claimRefer`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, referCode: code }) });
+            if(res.ok){ alert("৳10 Referral Bonus Added!"); loadBal(); } else alert("Invalid Code!");
         }
 
         function createBoard() {
             const b = document.getElementById('board'); b.innerHTML = "";
             for(let i=0; i<225; i++) {
                 let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell'; d.id=`c-${r}-${c}`;
-                if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow'); else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
+                if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow');
+                else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
+                if(r==7 && c>0 && c<7) d.classList.add('red'); if(r==7 && c>7 && c<14) d.classList.add('yellow');
+                if(c==7 && r>0 && r<7) d.classList.add('green'); if(c==7 && r>7 && r<14) d.classList.add('blue');
+                const safe = [[6,2],[2,8],[8,12],[12,6]]; safe.forEach(s=>{if(r==s[0]&&c==s[1])d.classList.add('safe')});
                 b.appendChild(d);
             }
             const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);};
-            addP(1,1,'green'); addP(1,4,'green'); addP(4,1,'green'); addP(4,4,'green'); addP(1,10,'yellow'); addP(1,13,'yellow'); addP(4,10,'yellow'); addP(4,13,'yellow');
-            addP(10,1,'red'); addP(10,4,'red'); addP(13,1,'red'); addP(13,4,'red'); addP(10,10,'blue'); addP(10,13,'blue'); addP(13,10,'blue'); addP(13,13,'blue');
+            addP(1,1,'green');addP(1,4,'green');addP(4,1,'green');addP(4,4,'green'); addP(1,10,'yellow');addP(1,13,'yellow');addP(4,10,'yellow');addP(4,13,'yellow');
+            addP(10,1,'red');addP(10,4,'red');addP(13,1,'red');addP(13,4,'red'); addP(10,10,'blue');addP(10,13,'blue');addP(13,10,'blue');addP(13,13,'blue');
         }
 
-        function roll() { const v = Math.floor(Math.random() * 6) + 1; document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][v]; }
-        function copyText(id) { navigator.clipboard.writeText(document.getElementById(id).innerText); alert("Copied!"); }
-        
+        function roll() { const v = Math.floor(Math.random() * 6) + 1; socket.emit("rollDice", { roomId: "global", value: v, player: userId }); }
+        function showTab(id){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab')); document.getElementById(id).classList.add('active-tab'); if(id==='lobby-tab') loadLobby(); }
+        function copyNum() { navigator.clipboard.writeText(document.getElementById('d-bk').innerText); alert("bKash Number Copied!"); }
+        function copyText(id) { navigator.clipboard.writeText(document.getElementById(id).innerText); alert("Invite Code Copied!"); }
+
         init();
     </script>
-
-    <!-- Header -->
-    <div class="bg-blue-600 text-white p-4 flex justify-between shadow-lg sticky top-0 z-50">
-        <div><h1 class="font-bold text-sm uppercase">Ludo Royal</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5 tracking-widest">...</p></div>
-        <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
-    </div>
-
-    <!-- PLAY TAB -->
-    <div id="game-tab" class="tab-content active-tab p-2 text-center">
-        <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
-        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4 border">
-            <button onclick="roll()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl flex items-center justify-center">🎲</button>
-            <div id="status-msg" class="text-[10px] font-bold text-blue-600 uppercase">Connecting...</div>
-            <button onclick="alert('Join Match to Chat!')" class="w-10 h-10 rounded-full bg-gray-100 text-xl">💬</button>
-        </div>
-    </div>
-
-    <!-- LOBBY TAB -->
-    <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
-
-    <!-- WALLET TAB -->
-    <div id="wallet-tab" class="tab-content p-4 space-y-4">
-        <!-- Refer Card -->
-        <div class="bg-gradient-to-r from-orange-400 to-yellow-500 p-5 rounded-3xl text-white shadow-lg">
-            <h3 class="font-bold">🎁 Refer & Earn</h3>
-            <p class="text-[9px] mb-2 uppercase font-bold">আমার কোড: <span id="my-refer-code" class="font-black ml-1 text-white">...</span></p>
-            <div id="refer-box" class="flex gap-2">
-                <input type="text" id="in-ref" placeholder="বন্ধুর কোড দিন" class="flex-1 p-2 rounded-xl text-black text-xs outline-none">
-                <button onclick="claimRefer()" class="bg-black text-white px-4 rounded-xl font-bold text-xs uppercase">CLAIM</button>
-            </div>
-        </div>
-        <!-- Deposit & Withdraw (Side by Side) -->
-        <div class="grid grid-cols-2 gap-3">
-            <div class="bg-white p-4 rounded-3xl shadow border-t-8 border-pink-500 text-center">
-                <h3 class="text-[10px] font-bold text-pink-600 mb-2">Deposit</h3>
-                <input type="number" id="amt" placeholder="৳ Amount" class="w-full border p-2 rounded-xl mb-2 text-xs outline-none">
-                <input type="text" id="trx" placeholder="TrxID" class="w-full border p-2 rounded-xl mb-2 text-xs outline-none">
-                <button onclick="dep()" class="w-full bg-pink-600 text-white py-2 rounded-xl font-bold text-[10px]">SUBMIT</button>
-            </div>
-            <div class="bg-white p-4 rounded-3xl shadow border-t-8 border-blue-500 text-center">
-                <h3 class="text-[10px] font-bold text-blue-600 mb-2">Withdraw</h3>
-                <input type="number" id="wamt" placeholder="৳ Amount" class="w-full border p-2 rounded-xl mb-2 text-xs outline-none">
-                <input type="text" id="wphone" placeholder="bKash" class="w-full border p-2 rounded-xl mb-2 text-xs outline-none">
-                <button onclick="wit()" class="w-full bg-blue-600 text-white py-2 rounded-xl font-bold text-[10px]">REQUEST</button>
-            </div>
-        </div>
-        <!-- bKash Number -->
-        <div class="bg-white p-4 rounded-3xl shadow text-center cursor-pointer" onclick="copyText('d-bk')">
-            <p class="text-[9px] text-gray-400 font-bold uppercase">Send Money to Personal bKash</p>
-            <p id="d-bk" class="font-black text-xl text-pink-700 tracking-tighter italic">Loading...</p>
-        </div>
-    </div>
-
-    <!-- Navigation Bar -->
-    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
-        <button onclick="showTab('game-tab')" class="font-bold text-[10px]">PLAY</button>
-        <button onclick="showTab('lobby-tab')" class="font-bold text-[10px]">LOBBY</button>
-        <button onclick="showTab('wallet-tab')" class="font-bold text-[10px]">WALLET</button>
-    </div>
 </body>
 </html>
