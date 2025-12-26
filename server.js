@@ -20,73 +20,64 @@ async function run() {
     const matches = db.collection("matches");
     const users = db.collection("users");
     const settings = db.collection("settings");
+    const transactions = db.collection("transactions");
 
-    // --- সময় পরিষ্কার করার ফাংশন (যাতে 08:40 PM এবং 8:40 PM একই হয়) ---
-    function normalizeTime(timeStr) {
-        return timeStr.replace(/[:\s\.]/g, '').toUpperCase().trim();
-    }
+    // --- টুর্নামেন্ট লিস্ট এবং ডিলিট করার এপিআই ---
+    app.get("/api/getMatches", async (req, res) => {
+        // লবিতে শুধু খোলা টুর্নামেন্ট দেখাবে
+        const list = await matches.find({ status: "open" }).toArray();
+        res.json(list);
+    });
 
-    // --- টুর্নামেন্ট অটো-মনিটর (প্রতি ১৫ সেকেন্ডে চেক করবে) ---
-    setInterval(async () => {
-        const now = new Date();
-        const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
-        
-        // বর্তমান সময় ফরম্যাট (যেমন: 8:40 AM)
-        const currentTimeRaw = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const currentTime = normalizeTime(currentTimeRaw);
-        
-        // ১ মিনিট পরের সময়
-        const oneMinLaterDate = new Date(bdTime.getTime() + 60000);
-        const oneMinLaterRaw = oneMinLaterDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const oneMinLater = normalizeTime(oneMinLaterRaw);
+    app.get("/api/admin/allMatches", async (req, res) => {
+        // অ্যাডমিন প্যানেলের জন্য সব টুর্নামেন্ট
+        const list = await matches.find().sort({ date: -1 }).toArray();
+        res.json(list);
+    });
 
-        // ১. ১ মিনিট আগের নোটিফিকেশন পাঠানো
-        const upcomingMatches = await matches.find({ status: "open" }).toArray();
-        upcomingMatches.forEach(m => {
-            if (normalizeTime(m.startTime) === oneMinLater) {
-                io.to(m._id.toString()).emit("oneMinWarning", { msg: "আপনার ম্যাচ ১ মিনিট পর শুরু হবে!" });
-            }
-        });
+    app.post("/api/admin/deleteMatch", async (req, res) => {
+        const { id } = req.body;
+        await matches.deleteOne({ _id: new ObjectId(id) });
+        res.json({ success: true });
+    });
 
-        // ২. গেম স্টার্ট করা (ঠিক সময়ে)
-        const openMatches = await matches.find({ status: "open" }).toArray();
-        for (let m of openMatches) {
-            if (normalizeTime(m.startTime) === currentTime) {
-                await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
-                // রুমের সবাইকে সিগন্যাল পাঠানো
-                io.to(m._id.toString()).emit("gameStartNow", { matchId: m._id.toString(), roomCode: m.roomCode });
-                console.log("Started Match: " + m.startTime);
-            }
-        }
-    }, 15000);
-
-    // APIs
-    app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));
+    // টুর্নামেন্ট তৈরি (Admin)
     app.post("/api/createMatch", async (req, res) => {
-        await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
+        const { entryFee, prize, mode, startTime } = req.body;
+        await matches.insertOne({ 
+            entryFee: parseInt(entryFee), 
+            prize: parseInt(prize), 
+            mode: parseInt(mode), 
+            startTime, 
+            players: [], 
+            status: "open", 
+            date: new Date() 
+        });
         res.json({ success: true });
     });
-    app.post("/api/joinMatch", async (req, res) => {
-        const { matchId, userId } = req.body;
-        const match = await matches.findOne({ _id: new ObjectId(matchId) });
-        const user = await users.findOne({ userId });
-        if (!user || user.balance < match.entryFee) return res.status(400).json({ error: "ব্যালেন্স নেই" });
-        await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });
-        await matches.updateOne({ _id: new ObjectId(matchId) }, { $push: { players: userId } });
+
+    // পেমেন্ট অ্যাপ্রুভাল লজিক (Fixed)
+    app.post("/api/admin/handleRequest", async (req, res) => {
+        const { id, action } = req.body;
+        const request = await transactions.findOne({ _id: new ObjectId(id) });
+        if (action === "approve") {
+            await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "approved" } });
+            await users.updateOne({ userId: request.userId }, { $inc: { balance: parseInt(request.amount) } }, { upsert: true });
+        } else {
+            await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "rejected" } });
+        }
         res.json({ success: true });
     });
-    app.get("/api/balance", async (req, res) => {
-        const u = await users.findOne({ userId: req.query.userId });
-        res.json({ balance: u ? u.balance : 0 });
-    });
-    app.get("/api/settings", async (req, res) => res.json(await settings.findOne({id:"config"}) || {bikash:"017XXXXXXXX"}));
+
+    // বাকি কমন এপিআইগুলো (Settings, Balance, Deposit, etc.)
+    app.get("/api/settings", async (req, res) => { res.json(await settings.findOne({id:"config"}) || {}); });
     app.post("/api/updateSettings", async (req, res) => { await settings.updateOne({id:"config"},{$set:req.body},{upsert:true}); res.json({success:true}); });
+    app.get("/api/balance", async (req, res) => { const u = await users.findOne({userId:req.query.userId}); res.json({balance: u?u.balance:0}); });
+    app.post("/api/deposit", async (req, res) => { await transactions.insertOne({...req.body, status:"pending", date:new Date()}); res.json({success:true}); });
+    app.get("/api/admin/requests", async (req, res) => { res.json(await transactions.find({status:"pending"}).toArray()); });
 
     io.on("connection", (socket) => {
-        socket.on("joinRoom", (id) => {
-            socket.join(id);
-            console.log("User joined room: " + id);
-        });
+        socket.on("joinRoom", (id) => socket.join(id));
         socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
     });
 
