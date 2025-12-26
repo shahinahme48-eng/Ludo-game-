@@ -17,31 +17,44 @@ const client = new MongoClient(uri);
 async function run() {
     await client.connect();
     const db = client.db("ludocash");
-    const matches = db.collection("matches");
     const users = db.collection("users");
     const settings = db.collection("settings");
     const transactions = db.collection("transactions");
+    const matches = db.collection("matches");
 
-    // --- টুর্নামেন্ট লিস্ট এবং ডিলিট করার এপিআই ---
-    app.get("/api/getMatches", async (req, res) => {
-        // লবিতে শুধু খোলা টুর্নামেন্ট দেখাবে
-        const list = await matches.find({ status: "open" }).toArray();
-        res.json(list);
+    // --- টুনামেন্ট জয়েনিং লজিক (নিখুঁত ফিক্স) ---
+    app.post("/api/joinMatch", async (req, res) => {
+        try {
+            const { matchId, userId } = req.body;
+            if (!matchId || !userId) return res.status(400).json({ error: "তথ্য অসম্পূর্ণ!" });
+
+            const match = await matches.findOne({ _id: new ObjectId(matchId) });
+            if (!match) return res.status(404).json({ error: "ম্যাচ খুঁজে পাওয়া যায়নি!" });
+
+            const user = await users.findOne({ userId: userId });
+            if (!user || user.balance < match.entryFee) {
+                return res.status(400).json({ error: "ব্যালেন্স নেই, রিচার্জ করুন" });
+            }
+
+            if (match.players.includes(userId)) {
+                return res.status(400).json({ error: "ইতিমধ্যেই জয়েন করেছেন" });
+            }
+
+            if (match.players.length >= match.mode) {
+                return res.status(400).json({ error: "ম্যাচটি হাউজফুল!" });
+            }
+
+            // টাকা কেটে নেওয়া এবং প্লেয়ার লিস্টে নাম তোলা
+            await users.updateOne({ userId: userId }, { $inc: { balance: -parseInt(match.entryFee) } });
+            await matches.updateOne({ _id: new ObjectId(matchId) }, { $push: { players: userId } });
+
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: "সার্ভার এরর: জয়েন করা যাচ্ছে না" });
+        }
     });
 
-    app.get("/api/admin/allMatches", async (req, res) => {
-        // অ্যাডমিন প্যানেলের জন্য সব টুর্নামেন্ট
-        const list = await matches.find().sort({ date: -1 }).toArray();
-        res.json(list);
-    });
-
-    app.post("/api/admin/deleteMatch", async (req, res) => {
-        const { id } = req.body;
-        await matches.deleteOne({ _id: new ObjectId(id) });
-        res.json({ success: true });
-    });
-
-    // টুর্নামেন্ট তৈরি (Admin)
+    // --- টুর্নামেন্ট তৈরি (Admin) ---
     app.post("/api/createMatch", async (req, res) => {
         const { entryFee, prize, mode, startTime } = req.body;
         await matches.insertOne({ 
@@ -56,31 +69,41 @@ async function run() {
         res.json({ success: true });
     });
 
-    // পেমেন্ট অ্যাপ্রুভাল লজিক (Fixed)
-    app.post("/api/admin/handleRequest", async (req, res) => {
-        const { id, action } = req.body;
-        const request = await transactions.findOne({ _id: new ObjectId(id) });
-        if (action === "approve") {
-            await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "approved" } });
-            await users.updateOne({ userId: request.userId }, { $inc: { balance: parseInt(request.amount) } }, { upsert: true });
-        } else {
-            await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "rejected" } });
-        }
+    // --- টুর্নামেন্ট ডিলিট (Admin) ---
+    app.post("/api/admin/deleteMatch", async (req, res) => {
+        const { id } = req.body;
+        await matches.deleteOne({ _id: new ObjectId(id) });
         res.json({ success: true });
     });
 
-    // বাকি কমন এপিআইগুলো (Settings, Balance, Deposit, etc.)
-    app.get("/api/settings", async (req, res) => { res.json(await settings.findOne({id:"config"}) || {}); });
-    app.post("/api/updateSettings", async (req, res) => { await settings.updateOne({id:"config"},{$set:req.body},{upsert:true}); res.json({success:true}); });
-    app.get("/api/balance", async (req, res) => { const u = await users.findOne({userId:req.query.userId}); res.json({balance: u?u.balance:0}); });
-    app.post("/api/deposit", async (req, res) => { await transactions.insertOne({...req.body, status:"pending", date:new Date()}); res.json({success:true}); });
-    app.get("/api/admin/requests", async (req, res) => { res.json(await transactions.find({status:"pending"}).toArray()); });
+    // লবিতে পাঠানোর জন্য ডাটা
+    app.get("/api/getMatches", async (req, res) => {
+        const list = await matches.find({ status: "open" }).toArray();
+        res.json(list);
+    });
 
+    // পেমেন্ট হ্যান্ডলিং
+    app.post("/api/deposit", async (req, res) => {
+        await transactions.insertOne({ ...req.body, status: "pending", date: new Date() });
+        res.json({ success: true });
+    });
+
+    app.get("/api/balance", async (req, res) => {
+        const user = await users.findOne({ userId: req.query.userId });
+        res.json({ balance: user ? user.balance : 0 });
+    });
+
+    app.get("/api/settings", async (req, res) => {
+        const data = await settings.findOne({ id: "config" });
+        res.json(data || { bikash: "017XXXXXXXX" });
+    });
+
+    // সকেট কানেকশন
     io.on("connection", (socket) => {
         socket.on("joinRoom", (id) => socket.join(id));
         socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
     });
 
-    server.listen(process.env.PORT || 3000);
+    server.listen(process.env.PORT || 3000, () => console.log("Server Live"));
 }
 run();
