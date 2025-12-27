@@ -4,62 +4,36 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Master Admin - SN Ludo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>body{background:#0f172a;color:white;font-family:sans-serif;}.card{background:#1e293b;border-radius:24px;padding:20px;border:1px solid #334155;margin-bottom:20px;}</style>
+    <style>body{background:#0f172a;color:white;font-family:sans-serif;}.card{background:#1e293b;border-radius:24px;padding:20px;border:1px solid #334155;margin-bottom:20px; shadow-xl;}</style>
 </head>
 <body class="p-4 pb-20" onload="checkPin()">
     <div id="main" class="hidden max-w-lg m-auto">
         <h1 class="text-blue-500 font-black text-2xl italic mb-6 text-center uppercase tracking-tighter">Master Control</h1>
-        
-        <!-- Host Match with Password -->
         <div class="card border-l-8 border-yellow-500 shadow-xl">
-            <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase italic">🏆 Host Private Tournament</h3>
+            <h3 class="text-xs font-bold text-yellow-500 mb-4 uppercase italic">🏆 Host Tournament</h3>
             <div class="grid grid-cols-2 gap-3 mb-3">
-                <input type="number" id="fee" placeholder="Entry Fee" class="bg-slate-900 p-3 rounded-xl text-sm outline-none text-white border border-slate-700">
-                <input type="number" id="prize" placeholder="Prize" class="bg-slate-900 p-3 rounded-xl text-sm outline-none text-white border border-slate-700">
+                <input type="number" id="fee" placeholder="Entry Fee" class="bg-slate-900 p-3 rounded-xl text-sm text-white border border-slate-700">
+                <input type="number" id="prize" placeholder="Prize Pool" class="bg-slate-900 p-3 rounded-xl text-sm text-white border border-slate-700">
                 <input type="text" id="rCode" placeholder="Room Code" class="bg-slate-900 p-3 rounded-xl text-sm text-white border border-slate-700">
-                <input type="text" id="rPass" placeholder="Room Password" class="bg-slate-900 p-3 rounded-xl text-sm text-white border border-slate-700">
+                <input type="text" id="rPass" placeholder="Password" class="bg-slate-900 p-3 rounded-xl text-sm text-white border border-slate-700">
                 <select id="mode" class="bg-slate-900 p-3 rounded-xl text-sm text-white border border-slate-700"><option value="2">2 Players</option><option value="4">4 Players</option></select>
                 <input type="text" id="time" placeholder="Time (8:40 AM)" class="bg-slate-900 p-3 rounded-xl text-sm text-white border border-slate-700">
             </div>
             <button onclick="create()" class="w-full bg-yellow-600 text-black py-4 rounded-xl font-bold uppercase text-xs">Publish Match</button>
         </div>
-
-        <!-- Requests List -->
-        <div class="card border-l-8 border-pink-500 shadow-xl">
-            <h3 class="text-xs font-bold text-pink-500 mb-4 uppercase italic">Deposit & Withdraw Requests</h3>
-            <div id="req-list" class="space-y-4"></div>
-        </div>
-
-        <!-- Settings -->
-        <div class="card border-l-8 border-cyan-500">
-            <h3 class="text-xs font-bold text-cyan-400 mb-4 uppercase">System Settings</h3>
-            <input type="text" id="bik" placeholder="bKash Number" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-white border border-slate-700 text-sm">
-            <input type="text" id="wa" placeholder="WhatsApp (880...)" class="bg-slate-900 p-3 rounded-xl w-full mb-4 text-white border border-slate-700 text-sm">
-            <button onclick="update()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save Settings</button>
-        </div>
+        <div class="card border-l-8 border-pink-500 shadow-xl"><h3 class="text-xs font-bold text-pink-500 mb-4 uppercase">Requests</h3><div id="req-list" class="space-y-4"></div></div>
+        <div class="card border-l-8 border-cyan-500"><input type="text" id="bik" placeholder="bKash No" class="bg-slate-900 p-3 rounded-xl w-full mb-3 text-white border border-slate-700"><input type="text" id="wa" placeholder="WhatsApp No" class="bg-slate-900 p-3 rounded-xl w-full mb-4 text-white border border-slate-700"><button onclick="update()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save</button></div>
     </div>
     <script>
         const R_URL = "https://ludo-pro-engine.onrender.com";
         function checkPin(){ if(prompt("PIN:")==="2025") { document.getElementById('main').classList.remove('hidden'); load(); } else alert("Access Denied"); }
         async function load(){
             const res = await fetch(`${R_URL}/api/admin/requests`); const data = await res.json();
-            document.getElementById('req-list').innerHTML = data.map(r => `
-                <div class="bg-slate-950 p-4 rounded-xl flex justify-between items-center shadow border border-slate-700">
-                    <div>
-                        <p class="font-bold text-white text-lg">৳${r.amount}</p>
-                        <p class="text-[9px] uppercase font-bold ${r.type==='deposit'?'text-pink-500':'text-blue-500'}">${r.type}</p>
-                        <p class="text-[8px] text-gray-500 uppercase">${r.userId} | ${r.trxId || r.phone}</p>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <button onclick="handle('${r._id}', 'approve')" class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase">Approve</button>
-                        <button onclick="handle('${r._id}', 'reject')" class="bg-red-600 text-white px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase">Reject</button>
-                    </div>
-                </div>
-            `).join('');
+            document.getElementById('req-list').innerHTML = data.map(r => `<div class="bg-slate-950 p-4 rounded-xl flex justify-between items-center shadow border border-slate-700"><div><p class="font-bold text-white uppercase text-xs ${r.type==='deposit'?'text-pink-500':'text-blue-500'}">${r.type}</p><p class="font-black text-white text-lg">৳${r.amount}</p><p class="text-[8px] text-gray-500 uppercase">${r.userId} | ${r.trxId || r.phone}</p></div><div class="flex flex-col gap-1"><button onclick="handle('${r._id}', 'approve')" class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase">Approve</button><button onclick="handle('${r._id}', 'reject')" class="bg-red-600 text-white px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase">Reject</button></div></div>`).join('');
             const sRes = await fetch(`${R_URL}/api/settings`); const sData = await sRes.json();
             document.getElementById('bik').value = sData.bikash || ""; document.getElementById('wa').value = sData.wa || "";
         }
-        async function handle(id, action){ await fetch(`${R_URL}/api/admin/handleRequest`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id, action})}); alert("Success!"); load(); }
+        async function handle(id, action){ await fetch(`${R_URL}/api/admin/handleRequest`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id, action})}); alert("Done!"); load(); }
         async function create(){ 
             const d = { type: 'createMatch', entryFee: document.getElementById('fee').value, prize: document.getElementById('prize').value, mode: document.getElementById('mode').value, startTime: document.getElementById('time').value.toUpperCase(), roomCode: document.getElementById('rCode').value, roomPass: document.getElementById('rPass').value };
             await fetch(`${R_URL}/api/createMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}); alert("Match Live!"); load();
