@@ -17,62 +17,72 @@ const client = new MongoClient(uri);
 async function run() {
     await client.connect();
     const db = client.db("ludocash");
-    const matches = db.collection("matches");
     const users = db.collection("users");
     const settings = db.collection("settings");
+    const transactions = db.collection("transactions");
+    const matches = db.collection("matches");
 
-    // --- টুর্নামেন্ট অটো-মনিটর ---
+    console.log("Connected to MongoDB");
+
+    // --- টুর্নামেন্ট টাইম মনিটর (বাংলাদেশ সময়) ---
     setInterval(async () => {
         const now = new Date();
         const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
-        
-        const format = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase().replace(/\./g, '');
-        const currentTime = format(bdTime);
-        const oneMinLater = format(new Date(bdTime.getTime() + 60000));
+        const currentTime = bdTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase().replace(/\s+/g, '');
 
-        // ১ মিনিট আগের নোটিশ
-        const upcoming = await matches.find({ status: "open", startTime: oneMinLater }).toArray();
-        upcoming.forEach(m => io.to(m._id.toString()).emit("oneMinWarning", { msg: "ম্যাচ ১ মিনিট পর শুরু হবে!" }));
-
-        // গেম স্টার্ট লজিক
-        const toStart = await matches.find({ status: "open", startTime: currentTime }).toArray();
-        for (let m of toStart) {
-            if (m.players.length >= 2) {
-                await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
-                io.to(m._id.toString()).emit("gameStartNow", { 
-                    matchId: m._id.toString(), 
-                    roomCode: m.roomCode || "SN-LUDO",
-                    prize: m.prize,
-                    players: m.players,
-                    currentTurn: m.players[0]
-                });
-            } else {
-                await matches.updateOne({ _id: m._id }, { $set: { status: "expired" } });
+        const openMatches = await matches.find({ status: "open" }).toArray();
+        for (let m of openMatches) {
+            const mTime = m.startTime.toUpperCase().replace(/\s+/g, '');
+            if (mTime === currentTime) {
+                if (m.players.length >= 2) {
+                    await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
+                    io.to(m._id.toString()).emit("gameStartNow", { matchId: m._id.toString(), roomCode: m.roomCode, prize: m.prize });
+                } else {
+                    await matches.updateOne({ _id: m._id }, { $set: { status: "expired" } });
+                }
             }
         }
-    }, 15000);
+    }, 10000);
 
-    // APIs
-    app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));
-    app.post("/api/joinMatch", async (req, res) => {
-        const { matchId, userId } = req.body;
-        const match = await matches.findOne({ _id: new ObjectId(matchId) });
-        if (!match || match.players.length >= match.mode) return res.status(400).json({ error: "Full" });
-        await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });
-        await matches.updateOne({ _id: new ObjectId(matchId) }, { $addToSet: { players: userId } });
+    // --- APIs ---
+    app.get("/api/settings", async (req, res) => {
+        const data = await settings.findOne({ id: "config" });
+        res.json(data || { bikash: "017XXXXXXXX", wa: "8801700000000", referBonus: 10 });
+    });
+
+    app.post("/api/updateSettings", async (req, res) => {
+        await settings.updateOne({ id: "config" }, { $set: req.body }, { upsert: true });
         res.json({ success: true });
     });
+
     app.get("/api/balance", async (req, res) => {
-        const u = await users.findOne({ userId: req.query.userId });
-        res.json({ balance: u ? u.balance : 0 });
+        const user = await users.findOne({ userId: req.query.userId });
+        res.json({ balance: user ? user.balance : 0 });
     });
+
+    app.get("/api/getMatches", async (req, res) => {
+        const list = await matches.find({ status: "open" }).toArray();
+        res.json(list);
+    });
+
     app.post("/api/createMatch", async (req, res) => {
         await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() });
         res.json({ success: true });
     });
-    app.get("/api/settings", async (req, res) => res.json(await settings.findOne({id:"config"}) || {bikash:"017XXXXXXXX"}));
 
-    // Socket Events
+    app.post("/api/joinMatch", async (req, res) => {
+        const { matchId, userId, fee } = req.body;
+        const match = await matches.findOne({ _id: new ObjectId(matchId) });
+        const user = await users.findOne({ userId });
+        if (!user || user.balance < fee) return res.status(400).json({ error: "Balance Low" });
+        if (match.players.length >= match.mode) return res.status(400).json({ error: "Full" });
+        
+        await users.updateOne({ userId }, { $inc: { balance: -parseInt(fee) } });
+        await matches.updateOne({ _id: new ObjectId(matchId) }, { $addToSet: { players: userId } });
+        res.json({ success: true });
+    });
+
+    // সকেট কানেকশন
     io.on("connection", (socket) => {
         socket.on("joinRoom", (id) => socket.join(id));
         socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
