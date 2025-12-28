@@ -17,41 +17,73 @@ const client = new MongoClient(uri);
 async function run() {
     await client.connect();
     const db = client.db("ludocash");
-    const matches = db.collection("matches");
     const users = db.collection("users");
+    const settings = db.collection("settings");
+    const transactions = db.collection("transactions");
+    const matches = db.collection("matches");
 
-    // সকেট কানেকশন (টার্ন এবং মুভমেন্ট সিঙ্ক)
-    io.on("connection", (socket) => {
-        socket.on("joinRoom", (id) => socket.join(id));
+    // --- অটোমেটিক টাইম মনিটর (Bangladesh Time Fix) ---
+    setInterval(async () => {
+        const now = new Date();
+        const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));
+        
+        const format = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase().replace(/\./g, '');
+        const currentTime = format(bdTime);
+        const oneMinLater = format(new Date(bdTime.getTime() + 60000));
 
-        socket.on("rollDice", (data) => {
-            io.to(data.roomId).emit("diceRolled", data);
-        });
+        // ১ মিনিট আগের নোটিশ
+        const upcoming = await matches.find({ status: "open", startTime: oneMinLater }).toArray();
+        upcoming.forEach(m => io.to(m._id.toString()).emit("oneMinWarning", { msg: "ম্যাচ ১ মিনিট পর শুরু হবে!" }));
 
-        socket.on("movePiece", async (data) => {
-            const match = await matches.findOne({ _id: new ObjectId(data.roomId) });
-            let nextPlayer = data.userId;
-
-            // ৬ না পড়লে পরবর্তী প্লেয়ারের টার্ন আসবে
-            if (data.diceValue !== 6) {
-                const players = match.players;
-                let currentIndex = players.indexOf(data.userId);
-                nextPlayer = players[(currentIndex + 1) % players.length];
+        // গেম স্টার্ট লজিক
+        const toStart = await matches.find({ status: "open", startTime: currentTime }).toArray();
+        for (let m of toStart) {
+            if (m.players.length >= 2) {
+                await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });
+                io.to(m._id.toString()).emit("gameStartNow", { 
+                    matchId: m._id.toString(), 
+                    roomCode: m.roomCode,
+                    prize: m.prize,
+                    currentTurn: m.players[0]
+                });
+            } else {
+                await matches.updateOne({ _id: m._id }, { $set: { status: "expired" } });
             }
-            
-            io.to(data.roomId).emit("pieceMoved", { ...data, nextTurn: nextPlayer });
-        });
+        }
+    }, 15000);
+
+    // APIs
+    app.get("/", (req, res) => res.send("Ludo Server is Running!"));
+    app.get("/api/settings", async (req, res) => res.json(await settings.findOne({ id: "config" }) || { bikash: "017XXXXXXXX", wa: "8801700000000" }));
+    app.post("/api/updateSettings", async (req, res) => { await settings.updateOne({ id: "config" }, { $set: req.body }, { upsert: true }); res.json({ success: true }); });
+    app.get("/api/balance", async (req, res) => { const u = await users.findOne({ userId: req.query.userId }); res.json({ balance: u ? u.balance : 0 }); });
+
+    app.post("/api/transaction", async (req, res) => {
+        const { userId, amount, type } = req.body;
+        if (type === "withdraw") {
+            const user = await users.findOne({ userId });
+            if (!user || user.balance < amount) return res.status(400).json({ error: "Balance Low" });
+            await users.updateOne({ userId }, { $inc: { balance: -parseInt(amount) } });
+        }
+        await transactions.insertOne({ ...req.body, status: "pending", date: new Date() });
+        res.json({ success: true });
     });
 
-    // বাকি লবি এবং ব্যালেন্স এপিআই আগের মতোই থাকবে...
     app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));
     app.post("/api/createMatch", async (req, res) => { await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() }); res.json({ success: true }); });
-    app.get("/api/balance", async (req, res) => { const u = await users.findOne({ userId: req.query.userId }); res.json({ balance: u ? u.balance : 0 }); });
     app.post("/api/joinMatch", async (req, res) => {
-        const { matchId, userId, fee } = req.body;
-        await users.updateOne({ userId }, { $inc: { balance: -parseInt(fee) } });
+        const { matchId, userId, pass } = req.body;
+        const match = await matches.findOne({ _id: new ObjectId(matchId) });
+        if (match.roomPass !== pass) return res.status(400).json({ error: "Wrong Password!" });
         await matches.updateOne({ _id: new ObjectId(matchId) }, { $addToSet: { players: userId } });
         res.json({ success: true });
+    });
+
+    // Socket Connections
+    io.on("connection", (socket) => {
+        socket.on("joinRoom", (id) => socket.join(id));
+        socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
+        socket.on("movePiece", (d) => io.to(d.roomId).emit("pieceMoved", d));
     });
 
     server.listen(process.env.PORT || 3000);
