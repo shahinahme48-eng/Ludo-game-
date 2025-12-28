@@ -77,9 +77,43 @@
             <button onclick="updateSettings()" class="w-full bg-cyan-600 py-3 rounded-xl font-bold uppercase text-xs">Save Settings</button>
         </div>
     </div>
+<script>
+    const R_URL = "https://ludo-pro-engine.onrender.com";
 
-    <script>
-        const R_URL = "https://ludo-pro-engine.onrender.com";
+    // এই ফাংশনটি এখন সরাসরি সার্ভার থেকে পেন্ডিং রিকোয়েস্ট নিয়ে আসবে
+    async function load(){
+        const res = await fetch(`${R_URL}/api/admin/requests`);
+        const data = await res.json();
+        
+        const listDiv = document.getElementById('req-list'); // আপনার রিকোয়েস্ট লিস্টের আইডি
+        
+        listDiv.innerHTML = data.length === 0 ? 
+            "<p class='text-center text-gray-500 py-4'>কোন রিকোয়েস্ট নেই</p>" : 
+            data.map(r => `
+            <div class="bg-slate-900 p-4 rounded-2xl flex justify-between items-center mb-3">
+                <div>
+                    <p class="font-bold text-white uppercase text-xs">${r.type}</p>
+                    <p class="font-black text-white text-lg">৳${r.amount}</p>
+                    <p class="text-[9px] text-gray-400 uppercase">${r.userId} | ${r.trxId || 'N/A'}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <button onclick="handleRequest('${r._id}', 'approve')" class="bg-green-600 text-white px-4 py-1.5 rounded-xl text-[10px] font-bold">Approve</button>
+                    <button onclick="handleRequest('${r._id}', 'reject')" class="bg-red-600 text-white px-4 py-1.5 rounded-xl text-[10px] font-bold">Reject</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function handleRequest(id, action) {
+        await fetch(`${R_URL}/api/admin/handleRequest`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id, action })
+        });
+        alert("Action: " + action.toUpperCase());
+        load();
+    }
+</script>
 
         function login() {
             if(document.getElementById('pin').value === "2025") {
@@ -198,4 +232,4 @@
         function checkPin() { /* PIN logic handled in login() */ }
     </script>
 </body>
-</html>
+    </html>
