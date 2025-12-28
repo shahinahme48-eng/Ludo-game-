@@ -90,20 +90,53 @@
                     <button onclick="joinMatch('${m._id}')" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md">JOIN</button>
                 </div>
             `).join('');
+            
         }
-
+        async function joinMatch(id) {
+    const res = await fetch(`${R_URL}/api/joinMatch`, { 
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'}, 
+        body: JSON.stringify({ matchId: id, userId: userId }) 
+    });
+    if(res.ok) {
+        alert("জয়েন সফল! গেম শুরুর সময় হলে প্লে-ট্যাবে অটোমেটিক নিয়ে যাবে।");
+        socket.emit("joinRoom", id);
+        loadLobby(); loadBal();
+    } else {
+        const d = await res.json();
+        alert(d.error || "সমস্যা হয়েছে!");
+    }
+        }
         async function joinMatch(id) {
             const res = await fetch(`${R_URL}/api/joinMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId:id, userId}) });
             if(res.ok){ alert("জয়েন সফল! পেজ কাটবেন না।"); socket.emit("joinRoom", id); loadLobby(); }
         }
-
         function createBoard() {
-            const b = document.getElementById('board'); b.innerHTML = "";
-            for(let i=0; i<225; i++) {
-                let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell'; d.id=`c-${r}-${c}`;
-                if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow'); else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
-                b.appendChild(d);
-            }
+    const b = document.getElementById('board'); 
+    b.innerHTML = "";
+    for(let i=0; i<225; i++) {
+        let r=Math.floor(i/15), c=i%15, d=document.createElement('div'); 
+        d.className='cell'; d.id = `c-${r}-${c}`;
+        if(r<6&&c<6) d.classList.add('green'); else if(r<6&&c>8) d.classList.add('yellow');
+        else if(r>8&&c<6) d.classList.add('red'); else if(r>8&&c>8) d.classList.add('blue');
+        b.appendChild(d);
+    }
+    // ৪টি রঙের ১৬টি গুটি সঠিক বেইস-এ বসানো
+    const addP = (r, c, cl, id) => { 
+        const p = document.createElement('div'); 
+        p.className = `piece p-${cl}`; 
+        p.id = `piece-${cl}-${id}`;
+        document.getElementById(`c-${r}-${c}`).appendChild(p); 
+    };
+    // Green (উপরে বামে)
+    addP(1,1,'green',0); addP(1,4,'green',1); addP(4,1,'green',2); addP(4,4,'green',3);
+    // Yellow (উপরে ডানে)
+    addP(1,10,'yellow',0); addP(1,13,'yellow',1); addP(4,10,'yellow',2); addP(4,13,'yellow',3);
+    // Red (নিচে বামে)
+    addP(10,1,'red',0); addP(10,4,'red',1); addP(13,1,'red',2); addP(13,4,'red',3);
+    // Blue (নিচে ডানে)
+    addP(10,10,'blue',0); addP(10,13,'blue',1); addP(13,10,'blue',2); addP(13,13,'blue',3);
+}
             const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);};
             addP(1,1,'green'); addP(1,10,'yellow'); addP(10,1,'red'); addP(10,10,'blue');
         }
