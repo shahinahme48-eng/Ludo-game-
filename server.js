@@ -79,6 +79,23 @@ async function run() {
             socket.join(id);
             console.log("Joined Room: " + id);
         });
+
+        
+app.post("/api/joinMatch", async (req, res) => {
+    const { matchId, userId } = req.body;
+    try {
+        const match = await matches.findOne({ _id: new ObjectId(matchId) });
+        const user = await users.findOne({ userId });
+
+        if (!user || user.balance < match.entryFee) return res.status(400).json({ error: "ব্যালেন্স নেই" });
+        if (match.players.length >= match.mode) return res.status(400).json({ error: "ম্যাচ ফুল" });
+        if (match.players.includes(userId)) return res.status(400).json({ error: "ইতিমধ্যেই জয়েন করেছেন" });
+
+        await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });
+        await matches.updateOne({ _id: new ObjectId(matchId) }, { $push: { players: userId } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: "Error joining match" }); }
+});
         socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));
     });
 
