@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Master Admin Pro</title>
 <script src="https://cdn.tailwindcss.com"></script>
+
 <style>
 body {background:#0f172a;color:white;font-family:'Inter',sans-serif;}
 .card {
@@ -14,49 +15,108 @@ body {background:#0f172a;color:white;font-family:'Inter',sans-serif;}
     box-shadow:0 8px 20px rgba(0,0,0,0.6);
     transition: transform 0.3s, box-shadow 0.3s;
 }
-.card:hover {transform: translateY(-3px); box-shadow:0 12px 25px rgba(0,0,0,0.7);}
-.input-field {
-    background:#1e293b;padding:0.75rem;border-radius:0.75rem;border:1px solid #334155;color:white;outline:none;width:100%;transition:0.3s;
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow:0 12px 25px rgba(0,0,0,0.7);
 }
-.input-field:focus {border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,0.5);}
-.btn {padding:0.75rem 1rem;border-radius:0.75rem;font-bold text-sm uppercase transition cursor-pointer}
-.btn-yellow {background:linear-gradient(90deg,#facc15,#fbbf24);color:#000;}
-.btn-yellow:hover {background:linear-gradient(90deg,#f59e0b,#d97706);}
-.btn-cyan {background:linear-gradient(90deg,#06b6d4,#0ea5e9);color:#000;}
-.btn-cyan:hover {background:linear-gradient(90deg,#0e7490,#0284c7);}
-.toast {position:fixed;top:1rem;right:1rem;background:#334155;padding:1rem 1.5rem;border-radius:1rem;font-size:0.8rem;font-weight:bold;opacity:0;transition:opacity 0.3s,transform 0.3s;transform:translateY(-20px);z-index:1000;}
-.toast.show {opacity:1;transform:translateY(0);}
-.badge {padding:0.25rem 0.5rem;border-radius:0.5rem;font-bold text-[9px];}
+.input-field {
+    background:#1e293b;
+    padding:0.75rem;
+    border-radius:0.75rem;
+    border:1px solid #334155;
+    color:white;
+    outline:none;
+    width:100%;
+    transition:0.3s;
+}
+.input-field:focus {
+    border-color:#3b82f6;
+    box-shadow:0 0 0 2px rgba(59,130,246,0.5);
+}
+.btn {
+    padding:0.75rem 1rem;
+    border-radius:0.75rem;
+    font-weight:bold;
+    text-transform:uppercase;
+    transition:0.3s;
+    cursor:pointer;
+}
+.btn-yellow {
+    background:linear-gradient(90deg,#facc15,#fbbf24);
+    color:#000;
+}
+.btn-yellow:hover {
+    background:linear-gradient(90deg,#f59e0b,#d97706);
+}
+.btn-cyan {
+    background:linear-gradient(90deg,#06b6d4,#0ea5e9);
+    color:#000;
+}
+.btn-cyan:hover {
+    background:linear-gradient(90deg,#0e7490,#0284c7);
+}
+.toast {
+    position:fixed;
+    top:1rem;
+    right:1rem;
+    background:#334155;
+    padding:1rem 1.5rem;
+    border-radius:1rem;
+    font-size:0.8rem;
+    font-weight:bold;
+    opacity:0;
+    transform:translateY(-20px);
+    transition:0.3s;
+    z-index:1000;
+}
+.toast.show {
+    opacity:1;
+    transform:translateY(0);
+}
+.badge {
+    padding:0.25rem 0.5rem;
+    border-radius:0.5rem;
+    font-size:9px;
+    font-weight:bold;
+}
 .badge-approve {background:linear-gradient(90deg,#16a34a,#22c55e);}
 .badge-reject {background:linear-gradient(90deg,#dc2626,#ef4444);}
 </style>
 </head>
+
 <body class="p-4">
 
-<!-- Toast Notification -->
+<!-- Toast -->
 <div id="toast" class="toast"></div>
 
-<!-- Login Page -->
+<!-- LOGIN PAGE -->
 <div id="login-page" class="max-w-sm m-auto mt-20">
-    <h1 class="text-3xl font-extrabold text-center text-blue-500 mb-8 tracking-tight uppercase italic">Admin Login</h1>
+    <h1 class="text-3xl font-extrabold text-center text-blue-500 mb-8 uppercase italic">
+        Admin Login
+    </h1>
     <div class="card bg-gradient-to-r from-slate-800 to-slate-900">
-        <input type="text" id="username" placeholder="Username" class="input-field mb-4">
-        <input type="password" id="password" placeholder="Password" class="input-field mb-6">
-        <button onclick="login()" class="btn btn-yellow w-full">Login</button>
+        <input type="password" id="password"
+               placeholder="Enter Admin Password"
+               class="input-field mb-6 text-center tracking-widest">
+        <button onclick="login()" class="btn btn-yellow w-full">
+            Login
+        </button>
     </div>
 </div>
 
-<!-- Admin Panel -->
+<!-- MAIN ADMIN PANEL -->
 <div id="main" class="hidden max-w-4xl m-auto">
 
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-extrabold text-blue-500 uppercase italic">Master Control</h1>
+        <h1 class="text-3xl font-extrabold text-blue-500 uppercase italic">
+            Master Control
+        </h1>
         <button onclick="logout()" class="btn btn-cyan">Logout</button>
     </div>
 
     <!-- Host Match -->
     <div class="card bg-gradient-to-r from-yellow-400 to-yellow-300">
-        <h3 class="text-sm font-bold text-black mb-4 uppercase flex items-center gap-2">🏆 Host Tournament</h3>
+        <h3 class="text-sm font-bold text-black mb-4 uppercase">🏆 Host Tournament</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <input type="number" id="fee" placeholder="Entry Fee" class="input-field">
             <input type="number" id="prize" placeholder="Prize Pool" class="input-field">
@@ -64,29 +124,31 @@ body {background:#0f172a;color:white;font-family:'Inter',sans-serif;}
                 <option value="2">2 Player</option>
                 <option value="4">4 Player</option>
             </select>
-            <input type="text" id="time" placeholder="Time (8:40 AM)" class="input-field">
+            <input type="text" id="time" placeholder="Time (8:40 PM)" class="input-field">
         </div>
-        <button onclick="create()" class="btn btn-yellow w-full">Publish Match</button>
+        <button onclick="create()" class="btn btn-yellow w-full">
+            Publish Match
+        </button>
     </div>
 
     <!-- Pending Requests -->
     <div class="card bg-gradient-to-r from-pink-500 to-pink-400">
-        <h3 class="text-sm font-bold text-black mb-4 uppercase flex items-center gap-2">📝 Pending Requests</h3>
+        <h3 class="text-sm font-bold text-black mb-4 uppercase">📝 Pending Requests</h3>
         <div id="req-list" class="space-y-3 text-xs"></div>
     </div>
 
-    <!-- Lobby Manager -->
+    <!-- Active Matches -->
     <div class="card bg-gradient-to-r from-blue-500 to-blue-400">
-        <h3 class="text-sm font-bold text-black mb-4 uppercase flex items-center gap-2">🎮 Manage Lobby</h3>
+        <h3 class="text-sm font-bold text-black mb-4 uppercase">🎮 Manage Lobby</h3>
         <div id="active-matches" class="space-y-2"></div>
     </div>
 
-    <!-- Users & Referrals -->
+    <!-- Users -->
     <div class="card bg-gradient-to-r from-green-500 to-green-400">
-        <h3 class="text-sm font-bold text-black mb-4 uppercase flex items-center gap-2">👥 Users & Referrals</h3>
-        <div id="user-list" class="max-h-44 overflow-y-auto text-[11px]">
-            <table class="w-full table-auto text-left">
-                <thead class="text-gray-100 text-[10px] uppercase">
+        <h3 class="text-sm font-bold text-black mb-4 uppercase">👥 Users</h3>
+        <div class="max-h-44 overflow-y-auto text-[11px]">
+            <table class="w-full">
+                <thead class="text-[10px] uppercase">
                     <tr>
                         <th>User ID</th>
                         <th>Balance</th>
@@ -99,85 +161,127 @@ body {background:#0f172a;color:white;font-family:'Inter',sans-serif;}
 
     <!-- Settings -->
     <div class="card bg-gradient-to-r from-cyan-500 to-cyan-400">
-        <h3 class="text-sm font-bold text-black mb-4 uppercase flex items-center gap-2">⚙️ Settings</h3>
-        <input type="text" id="bik" placeholder="bKash" class="input-field mb-2 w-full">
-        <input type="text" id="wa" placeholder="WhatsApp" class="input-field mb-2 w-full">
-        <input type="number" id="bonus" placeholder="Refer Bonus" class="input-field mb-4 w-full">
-        <button onclick="update()" class="btn btn-cyan w-full">Save Settings</button>
+        <h3 class="text-sm font-bold text-black mb-4 uppercase">⚙️ Settings</h3>
+        <input type="text" id="bik" placeholder="bKash" class="input-field mb-2">
+        <input type="text" id="wa" placeholder="WhatsApp" class="input-field mb-2">
+        <input type="number" id="bonus" placeholder="Refer Bonus" class="input-field mb-4">
+        <button onclick="update()" class="btn btn-cyan w-full">
+            Save Settings
+        </button>
     </div>
 </div>
 
 <script>
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "ADMIN@2026";
+/* ================= CONFIG ================= */
+const ADMIN_PASSWORD = "12341234"; // 🔐 Admin Password
 const R_URL = "https://ludo-pro-engine.onrender.com";
+/* ========================================= */
 
-function showToast(message){
-    const t = document.getElementById('toast');
-    t.textContent = message;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2000);
+function showToast(msg){
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(()=>t.classList.remove("show"),2000);
 }
 
 function login(){
-    const user = document.getElementById('username').value;
-    const pass = document.getElementById('password').value;
-    if(user === ADMIN_USERNAME && pass === ADMIN_PASSWORD){
-        document.getElementById('login-page').classList.add('hidden');
-        document.getElementById('main').classList.remove('hidden');
-        showToast("✅ Login Successful!");
+    const pass = document.getElementById("password").value;
+    if(pass === ADMIN_PASSWORD){
+        document.getElementById("login-page").classList.add("hidden");
+        document.getElementById("main").classList.remove("hidden");
+        showToast("✅ Admin Access Granted");
         load();
-    } else showToast("❌ Wrong Credentials!");
+    } else {
+        showToast("❌ Wrong Password");
+    }
 }
 
 function logout(){
-    document.getElementById('main').classList.add('hidden');
-    document.getElementById('login-page').classList.remove('hidden');
+    document.getElementById("main").classList.add("hidden");
+    document.getElementById("login-page").classList.remove("hidden");
+    document.getElementById("password").value="";
     showToast("🔒 Logged Out");
 }
 
-// Load, create, handle, delMatch, update functions (same as previous version)
+/* ===== API FUNCTIONS ===== */
 async function load(){
-    try{
-        const res = await fetch(`${R_URL}/api/admin/requests`); const data = await res.json();
-        document.getElementById('req-list').innerHTML = data.map(r=>`
-        <div class="bg-slate-950 p-4 rounded-xl flex justify-between items-center shadow border border-slate-700">
+    const r = await fetch(`${R_URL}/api/admin/requests`);
+    const data = await r.json();
+    document.getElementById("req-list").innerHTML = data.map(x=>`
+        <div class="bg-slate-900 p-3 rounded-xl flex justify-between">
             <div>
-                <p class="font-bold text-xs uppercase ${r.type==='deposit'?'text-pink-500':'text-blue-500'}">${r.type}</p>
-                <p class="font-black text-lg">৳${r.amount}</p>
-                <p class="text-[8px] text-gray-500">${r.userId} | ${r.trxId||r.phone}</p>
+                <p class="font-bold">${x.type}</p>
+                <p>৳${x.amount}</p>
+                <p class="text-[9px] text-gray-400">${x.userId}</p>
             </div>
             <div class="flex flex-col gap-1">
-                <span class="badge badge-approve cursor-pointer" onclick="handle('${r._id}','approve')">Approve</span>
-                <span class="badge badge-reject cursor-pointer" onclick="handle('${r._id}','reject')">Reject</span>
+                <span class="badge badge-approve" onclick="handle('${x._id}','approve')">Approve</span>
+                <span class="badge badge-reject" onclick="handle('${x._id}','reject')">Reject</span>
             </div>
-        </div>`).join('');
+        </div>
+    `).join("");
 
-        const mRes = await fetch(`${R_URL}/api/getMatches`); const mData = await mRes.json();
-        document.getElementById('active-matches').innerHTML = mData.map(m=>`
-        <div class="bg-slate-950 p-3 rounded-xl flex justify-between items-center border border-slate-800">
-            <p class="text-white text-xs">৳${m.prize} (${m.startTime})</p>
-            <button onclick="delMatch('${m._id}')" class="bg-red-900 hover:bg-red-700 text-white px-2 py-1 rounded text-[8px] border border-red-500 font-black transition">DELETE</button>
-        </div>`).join('');
+    const m = await fetch(`${R_URL}/api/getMatches`).then(r=>r.json());
+    document.getElementById("active-matches").innerHTML = m.map(x=>`
+        <div class="bg-slate-900 p-2 rounded flex justify-between">
+            <span>৳${x.prize} - ${x.startTime}</span>
+            <button onclick="delMatch('${x._id}')" class="text-red-400 text-xs">DELETE</button>
+        </div>
+    `).join("");
 
-        const uRes = await fetch(`${R_URL}/api/admin/users`); const uData = await uRes.json();
-        document.getElementById('user-table').innerHTML = uData.map(u=>`
-        <tr class="border-b border-slate-800">
-            <td class="py-1">${u.userId}</td>
-            <td class="py-1">৳${u.balance}</td>
-        </tr>`).join('');
+    const u = await fetch(`${R_URL}/api/admin/users`).then(r=>r.json());
+    document.getElementById("user-table").innerHTML = u.map(x=>`
+        <tr><td>${x.userId}</td><td>৳${x.balance}</td></tr>
+    `).join("");
 
-        const sRes = await fetch(`${R_URL}/api/settings`); const sData = await sRes.json();
-        document.getElementById('bik').value = sData.bikash||"";
-        document.getElementById('wa').value = sData.wa||"";
-        document.getElementById('bonus').value = sData.referBonus||10;
-    } catch(e){ showToast("Error loading data!"); console.error(e); }
+    const s = await fetch(`${R_URL}/api/settings`).then(r=>r.json());
+    bik.value=s.bikash||""; wa.value=s.wa||""; bonus.value=s.referBonus||10;
 }
 
-async function delMatch(id){ await fetch(`${R_URL}/api/admin/deleteMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); showToast("Match Deleted!"); load();}
-async function handle(id,action){ await fetch(`${R_URL}/api/admin/handleRequest`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action})}); showToast("Success!"); load();}
-async function create(){ const fee=document.getElementById('fee').value; const prize=document.getElementById('prize').value; const time=document.getElementById('time').value.toUpperCase(); if(!fee||!prize||!time){showToast("Fill all fields!");return;} await fetch(`${R_URL}/api/createMatch`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entryFee:fee,prize:prize,mode:document.getElementById('mode').value,startTime:time})}); showToast("Match Live!"); load();}
-async function update(){ await fetch(`${R_URL}/api/updateSettings`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bikash:document.getElementById('bik').value,wa:document.getElementById('wa').value,referBonus:document.getElementById('bonus').value})}); showToast("Saved!"); }
+async function handle(id,action){
+    await fetch(`${R_URL}/api/admin/handleRequest`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({id,action})
+    });
+    showToast("Done");
+    load();
+}
+async function delMatch(id){
+    await fetch(`${R_URL}/api/admin/deleteMatch`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({id})
+    });
+    showToast("Deleted");
+    load();
+}
+async function create(){
+    await fetch(`${R_URL}/api/createMatch`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            entryFee:fee.value,
+            prize:prize.value,
+            mode:mode.value,
+            startTime:time.value
+        })
+    });
+    showToast("Match Live");
+    load();
+}
+async function update(){
+    await fetch(`${R_URL}/api/updateSettings`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            bikash:bik.value,
+            wa:wa.value,
+            referBonus:bonus.value
+        })
+    });
+    showToast("Saved");
+}
 </script>
 
 </body>
