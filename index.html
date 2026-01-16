@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Realistic Ludo Game</title>
+<title>Professional Ludo</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
 body{margin:0;padding:0;font-family:sans-serif;background:#f0f4f8;}
@@ -11,18 +11,19 @@ h1{text-align:center;font-size:2rem;margin:12px;color:#3b82f6;font-weight:bold;}
 #board{display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(15,1fr);width:90vw;height:90vw;max-width:480px;margin:auto;background:#fff;border:5px solid #333;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.2);position:relative;}
 .cell{border:0.1px solid #ddd;position:relative;display:flex;align-items:center;justify-content:center;}
 .safe{opacity:0.5;background-image:url('https://cdn-icons-png.flaticon.com/512/1828/1828884.png');background-size:70%;background-repeat:no-repeat;background-position:center;}
-.piece{width:65%;height:65%;border-radius:50%;border:2px solid #fff;position:absolute;transition:0.5s;box-shadow:0 3px 6px rgba(0,0,0,0.3);cursor:pointer;}
+.piece{width:70%;height:70%;border-radius:50%;border:2px solid #fff;position:absolute;transition:all 0.5s ease;box-shadow:0 3px 6px rgba(0,0,0,0.3);cursor:pointer;}
 .p-red{background:radial-gradient(circle,#ff5e5e,#b30000);}
 .p-green{background:radial-gradient(circle,#58d68d,#1d8348);}
 .p-yellow{background:radial-gradient(circle,#f7dc6f,#9a7d0a);}
 .p-blue{background:radial-gradient(circle,#5dade2,#1b4f72);}
-.dice{width:60px;height:60px;font-size:2rem;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,0.3);cursor:pointer;margin:auto;margin-bottom:10px;}
+.dice{width:60px;height:60px;font-size:2rem;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,0.3);cursor:pointer;margin:auto;margin-bottom:10px;transition:transform 0.3s;}
 .status{font-weight:bold;text-align:center;margin-top:5px;}
+#winner-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:2rem 3rem;border-radius:1.5rem;box-shadow:0 10px 30px rgba(0,0,0,0.5);display:none;text-align:center;z-index:1000;}
 </style>
 </head>
 <body>
 
-<h1>Realistic Ludo Game</h1>
+<h1>Professional Ludo Game</h1>
 <div class="flex justify-center mb-2">
   <div id="dice" class="dice">🎲</div>
 </div>
@@ -30,22 +31,29 @@ h1{text-align:center;font-size:2rem;margin:12px;color:#3b82f6;font-weight:bold;}
 <div id="board"></div>
 <p class="status" id="status"></p>
 
+<div id="winner-popup">
+  <h2 id="winner-text" class="text-2xl font-bold mb-4"></h2>
+  <button onclick="location.reload()" class="px-4 py-2 bg-blue-500 text-white rounded-lg">Restart</button>
+</div>
+
 <script>
-// ====== Variables ======
-const board = document.getElementById('board');
-const dice = document.getElementById('dice');
-const turnText = document.getElementById('turn');
-const status = document.getElementById('status');
-const players = ['red','green','yellow','blue'];
+const board=document.getElementById('board');
+const dice=document.getElementById('dice');
+const turnText=document.getElementById('turn');
+const status=document.getElementById('status');
+const winnerPopup=document.getElementById('winner-popup');
+const winnerText=document.getElementById('winner-text');
+
+const players=['red','green','yellow','blue'];
 let turn=0;
 let diceValue=0;
-let positions = {red:[-1,-1,-1,-1],green:[-1,-1,-1,-1],yellow:[-1,-1,-1,-1],blue:[-1,-1,-1,-1]};
+let positions={red:[-1,-1,-1,-1],green:[-1,-1,-1,-1],yellow:[-1,-1,-1,-1],blue:[-1,-1,-1,-1]};
 let pieces={red:[],green:[],yellow:[],blue:[]};
-let homePositions, paths;
-let audioMove = new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
-let audioCut = new Audio('https://www.soundjay.com/button/sounds/button-10.mp3');
+let paths,homePositions;
+let audioMove=new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
+let audioCut=new Audio('https://www.soundjay.com/button/sounds/button-10.mp3');
 
-// ====== Board Setup ======
+// Board setup
 for(let r=0;r<15;r++){
   for(let c=0;c<15;c++){
     const cell=document.createElement('div');
@@ -55,23 +63,22 @@ for(let r=0;r<15;r++){
   }
 }
 
-// ====== Path setup ======
-paths = {
-  red:[[13,6],[12,6],[11,6],[10,6],[9,6],[8,6],[7,6],[7,5],[7,4],[7,3],[7,2],[6,2],[5,2],[4,2],[3,2],[2,2],[1,2],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7],[0,8],[0,9],[0,10],[1,10],[2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[7,11],[7,12],[7,13],[8,13],[9,13],[10,13],[11,13],[12,13],[13,13],[13,12],[13,11],[13,10],[13,9],[13,8],[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]],
-  green:[], yellow:[], blue:[]
-};
-// For demo simplicity, all players follow same path
-players.forEach(p=>{if(p!=='red') paths[p]=paths['red']});
+// Path setup (demo simplified)
+paths={};
+players.forEach(p=>{
+  paths[p]=[];
+  for(let i=0;i<56;i++){paths[p].push([i%15,Math.floor(i/15)]);}
+});
 
-// ====== Home positions ======
-homePositions = {
+// Home positions
+homePositions={
   red:[[13,1],[13,4],[10,1],[10,4]],
   green:[[1,1],[1,4],[4,1],[4,4]],
   yellow:[[1,10],[1,13],[4,10],[4,13]],
   blue:[[10,10],[10,13],[13,10],[13,13]]
 };
 
-// ====== Create Pieces ======
+// Create Pieces
 function createPieces(){
   for(let p in homePositions){
     homePositions[p].forEach((pos,i)=>{
@@ -88,44 +95,42 @@ function createPieces(){
 }
 createPieces();
 
-// ====== Dice Roll ======
+// Dice
 dice.onclick=()=>{
   diceValue=Math.floor(Math.random()*6)+1;
   dice.innerText=['⚀','⚁','⚂','⚃','⚄','⚅'][diceValue-1];
+  dice.style.transform="rotate(360deg)";
+  setTimeout(()=>dice.style.transform="rotate(0deg)",300);
   status.innerText=`${players[turn].toUpperCase()} rolled ${diceValue}`;
 }
 
-// ====== Piece Click ======
+// Piece click
 function pieceClick(player,index){
   if(players[turn]!==player) return;
   let pos=positions[player][index];
-  if(pos===-1 && diceValue!==6) return; // must roll 6 to enter
+  if(pos===-1 && diceValue!==6) return;
   movePiece(player,index,diceValue);
 }
 
-// ====== Move Piece ======
+// Move piece
 function movePiece(player,index,steps){
-  let pos = positions[player][index];
-  if(pos===-1){ // enter path
-    pos=0;
-    diceValue=0;
-  }else pos+=steps;
+  let pos=positions[player][index];
+  if(pos===-1){pos=0;diceValue=0;}
+  else pos+=steps;
   if(pos>=paths[player].length){pos=paths[player].length-1;}
   positions[player][index]=pos;
 
-  // Move piece visually
   const [r,c]=paths[player][pos];
   const cell=document.getElementById(`cell-${r}-${c}`);
   cell.appendChild(pieces[player][index]);
   audioMove.play();
 
-  // Cut other pieces
+  // Cut others
   for(let p in pieces){
     if(p!==player){
       pieces[p].forEach((op,j)=>{
         if(op.parentNode===cell){
           audioCut.play();
-          // return to home
           const homeCell=document.getElementById(`cell-${homePositions[p][j][0]}-${homePositions[p][j][1]}`);
           homeCell.appendChild(op);
           positions[p][j]=-1;
@@ -135,12 +140,15 @@ function movePiece(player,index,steps){
   }
 
   // Check win
-  if(positions[player].every(v=>v===paths[player].length-1)) status.innerText=`🏆 ${player.toUpperCase()} Wins!`;
+  if(positions[player].every(v=>v===paths[player].length-1)){
+    winnerText.innerText=`🏆 ${player.toUpperCase()} Wins!`;
+    winnerPopup.style.display='block';
+  }
 
   nextTurn();
 }
 
-// ====== Next Turn ======
+// Next turn
 function nextTurn(){
   turn=(turn+1)%4;
   turnText.innerText=players[turn].charAt(0).toUpperCase()+players[turn].slice(1);
