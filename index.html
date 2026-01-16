@@ -1,138 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ludo Royal Pro</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root { --red: #ff3b3b; --green: #00c853; --yellow: #ffea00; --blue: #2979ff; }
-        body { background: #f0f4f8; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
-        #board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); width: 92vw; height: 92vw; max-width: 440px; margin: auto; background: #fff; border: 6px solid #333; border-radius: 12px; overflow: hidden; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        .cell { border: 0.1px solid #ddd; position: relative; display: flex; align-items: center; justify-content: center; }
-        .red { background: var(--red); } .green { background: var(--green); } .yellow { background: var(--yellow); } .blue { background: var(--blue); }
-        .piece { width: 75%; height: 75%; border-radius: 50%; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); position: absolute; z-index: 100; transition: 0.4s; }
-        .p-red { background: radial-gradient(circle, #ff5e5e, #b30000); } .p-green { background: radial-gradient(circle, #58d68d, #1d8348); } .p-yellow { background: radial-gradient(circle, #f7dc6f, #9a7d0a); } .p-blue { background: radial-gradient(circle, #5dade2, #1b4f72); }
-        .tab-content { display: none; } .active-tab { display: block !important; }
-        .safe { background-image: url('https://cdn-icons-png.flaticon.com/512/1828/1828884.png'); background-size: 70%; background-repeat: no-repeat; background-position: center; opacity: 0.6; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Realistic Ludo Game</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body{margin:0;padding:0;font-family:sans-serif;background:#f0f4f8;}
+h1{text-align:center;font-size:2rem;margin:12px;color:#3b82f6;font-weight:bold;}
+#board{display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(15,1fr);width:90vw;height:90vw;max-width:480px;margin:auto;background:#fff;border:5px solid #333;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.2);position:relative;}
+.cell{border:0.1px solid #ddd;position:relative;display:flex;align-items:center;justify-content:center;}
+.safe{opacity:0.5;background-image:url('https://cdn-icons-png.flaticon.com/512/1828/1828884.png');background-size:70%;background-repeat:no-repeat;background-position:center;}
+.piece{width:65%;height:65%;border-radius:50%;border:2px solid #fff;position:absolute;transition:0.5s;box-shadow:0 3px 6px rgba(0,0,0,0.3);cursor:pointer;}
+.p-red{background:radial-gradient(circle,#ff5e5e,#b30000);}
+.p-green{background:radial-gradient(circle,#58d68d,#1d8348);}
+.p-yellow{background:radial-gradient(circle,#f7dc6f,#9a7d0a);}
+.p-blue{background:radial-gradient(circle,#5dade2,#1b4f72);}
+.dice{width:60px;height:60px;font-size:2rem;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,0.3);cursor:pointer;margin:auto;margin-bottom:10px;}
+.status{font-weight:bold;text-align:center;margin-top:5px;}
+</style>
 </head>
-<body class="pb-24">
-    <script>
-        const R_URL = "https://ludo-pro-engine.onrender.com";
-        if(!localStorage.getItem('SN_ID')) localStorage.setItem('SN_ID', "SN"+Math.floor(1000+Math.random()*9000));
-        const userId = localStorage.getItem('SN_ID');
-        const socket = io(R_URL);
+<body>
 
-        async function init(){
-            createBoard(); loadBal();
-            document.getElementById('uid').innerText = "ID: " + userId;
-            document.getElementById('my-ref').innerText = userId;
-            const res = await fetch(`${R_URL}/api/settings`); const data = await res.json();
-            document.getElementById('d-bk').innerText = data.bikash;
-            document.getElementById('wa').href = `https://wa.me/${data.wa}?text=Support_ID:${userId}`;
-            socket.on("connect", () => { document.getElementById('status-msg').innerText = "Online 🟢"; });
-            socket.on("diceRolled", (d) => { document.getElementById('dice-btn').innerText = ["","⚀","⚁","⚂","⚃","⚄","⚅"][d.value-1]; });
-            socket.on("gameStartNow", (d) => { alert("Match Started!"); showTab('game-tab'); });
+<h1>Realistic Ludo Game</h1>
+<div class="flex justify-center mb-2">
+  <div id="dice" class="dice">🎲</div>
+</div>
+<p class="text-center">Turn: <span id="turn">Red</span></p>
+<div id="board"></div>
+<p class="status" id="status"></p>
+
+<script>
+// ====== Variables ======
+const board = document.getElementById('board');
+const dice = document.getElementById('dice');
+const turnText = document.getElementById('turn');
+const status = document.getElementById('status');
+const players = ['red','green','yellow','blue'];
+let turn=0;
+let diceValue=0;
+let positions = {red:[-1,-1,-1,-1],green:[-1,-1,-1,-1],yellow:[-1,-1,-1,-1],blue:[-1,-1,-1,-1]};
+let pieces={red:[],green:[],yellow:[],blue:[]};
+let homePositions, paths;
+let audioMove = new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
+let audioCut = new Audio('https://www.soundjay.com/button/sounds/button-10.mp3');
+
+// ====== Board Setup ======
+for(let r=0;r<15;r++){
+  for(let c=0;c<15;c++){
+    const cell=document.createElement('div');
+    cell.className='cell';
+    cell.id=`cell-${r}-${c}`;
+    board.appendChild(cell);
+  }
+}
+
+// ====== Path setup ======
+paths = {
+  red:[[13,6],[12,6],[11,6],[10,6],[9,6],[8,6],[7,6],[7,5],[7,4],[7,3],[7,2],[6,2],[5,2],[4,2],[3,2],[2,2],[1,2],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7],[0,8],[0,9],[0,10],[1,10],[2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[7,11],[7,12],[7,13],[8,13],[9,13],[10,13],[11,13],[12,13],[13,13],[13,12],[13,11],[13,10],[13,9],[13,8],[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]],
+  green:[], yellow:[], blue:[]
+};
+// For demo simplicity, all players follow same path
+players.forEach(p=>{if(p!=='red') paths[p]=paths['red']});
+
+// ====== Home positions ======
+homePositions = {
+  red:[[13,1],[13,4],[10,1],[10,4]],
+  green:[[1,1],[1,4],[4,1],[4,4]],
+  yellow:[[1,10],[1,13],[4,10],[4,13]],
+  blue:[[10,10],[10,13],[13,10],[13,13]]
+};
+
+// ====== Create Pieces ======
+function createPieces(){
+  for(let p in homePositions){
+    homePositions[p].forEach((pos,i)=>{
+      const div=document.createElement('div');
+      div.className=`piece p-${p}`;
+      div.dataset.player=p;
+      div.dataset.index=i;
+      div.dataset.active='0';
+      div.addEventListener('click',()=>pieceClick(p,i));
+      pieces[p].push(div);
+      document.getElementById(`cell-${pos[0]}-${pos[1]}`).appendChild(div);
+    });
+  }
+}
+createPieces();
+
+// ====== Dice Roll ======
+dice.onclick=()=>{
+  diceValue=Math.floor(Math.random()*6)+1;
+  dice.innerText=['⚀','⚁','⚂','⚃','⚄','⚅'][diceValue-1];
+  status.innerText=`${players[turn].toUpperCase()} rolled ${diceValue}`;
+}
+
+// ====== Piece Click ======
+function pieceClick(player,index){
+  if(players[turn]!==player) return;
+  let pos=positions[player][index];
+  if(pos===-1 && diceValue!==6) return; // must roll 6 to enter
+  movePiece(player,index,diceValue);
+}
+
+// ====== Move Piece ======
+function movePiece(player,index,steps){
+  let pos = positions[player][index];
+  if(pos===-1){ // enter path
+    pos=0;
+    diceValue=0;
+  }else pos+=steps;
+  if(pos>=paths[player].length){pos=paths[player].length-1;}
+  positions[player][index]=pos;
+
+  // Move piece visually
+  const [r,c]=paths[player][pos];
+  const cell=document.getElementById(`cell-${r}-${c}`);
+  cell.appendChild(pieces[player][index]);
+  audioMove.play();
+
+  // Cut other pieces
+  for(let p in pieces){
+    if(p!==player){
+      pieces[p].forEach((op,j)=>{
+        if(op.parentNode===cell){
+          audioCut.play();
+          // return to home
+          const homeCell=document.getElementById(`cell-${homePositions[p][j][0]}-${homePositions[p][j][1]}`);
+          homeCell.appendChild(op);
+          positions[p][j]=-1;
         }
+      });
+    }
+  }
 
-        async function loadBal(){
-            const res = await fetch(`${R_URL}/api/balance?userId=${userId}`); const data = await res.json();
-            document.getElementById('balance').innerText = data.balance || 0;
-        }
+  // Check win
+  if(positions[player].every(v=>v===paths[player].length-1)) status.innerText=`🏆 ${player.toUpperCase()} Wins!`;
 
-        async function loadLobby(){
-            const res = await fetch(`${R_URL}/api/getMatches`); const data = await res.json();
-            document.getElementById('match-list').innerHTML = data.map(m => `<div class="bg-white p-5 rounded-3xl shadow flex justify-between items-center border-l-8 border-blue-600 mb-3"><div><p class="font-black text-gray-800 text-lg uppercase italic">৳${m.prize} Prize</p><p class="text-[9px] font-bold text-blue-600 uppercase italic">${m.players.length}/${m.mode} Joined | ${m.startTime}</p></div><button onclick="joinMatch('${m._id}', ${m.entryFee})" class="bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-xs shadow-md">JOIN</button></div>`).join('');
-        }
+  nextTurn();
+}
 
-        async function joinMatch(id, fee) {
-            const res = await fetch(`${R_URL}/api/joinMatch`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId:id, userId, fee}) });
-            if(res.ok){ alert("Joined Match!"); socket.emit("joinRoom", id); loadLobby(); loadBal(); } else alert("Balance Low!");
-        }
-
-        async function dep(){
-            const amount = document.getElementById('amt').value; const trxId = document.getElementById('trx').value;
-            if(!amount || !trxId) return alert("All fields required");
-            await fetch(`${R_URL}/api/transaction`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, amount, trxId, type: 'deposit' }) });
-            alert("Sent!");
-        }
-
-        async function wit(){
-            const amount = document.getElementById('wamt').value; const phone = document.getElementById('wphone').value;
-            if(!amount || !phone) return alert("All fields required");
-            const res = await fetch(`${R_URL}/api/transaction`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId, amount, phone, type: 'withdraw' }) });
-            if(res.ok){ alert("Withdraw Request Sent!"); loadBal(); } else alert("Balance Low");
-        }
-
-        function createBoard() {
-            const b = document.getElementById('board'); b.innerHTML = "";
-            for(let i=0; i<225; i++) {
-                let r=Math.floor(i/15),c=i%15,d=document.createElement('div'); d.className='cell'; d.id=`c-${r}-${c}`;
-                if(r<6&&c<6)d.classList.add('green'); else if(r<6&&c>8)d.classList.add('yellow');
-                else if(r>8&&c<6)d.classList.add('red'); else if(r>8&&c>8)d.classList.add('blue');
-                if(r==7 && c>0 && c<7) d.classList.add('red'); if(r==7 && c>7 && c<14) d.classList.add('yellow');
-                if(c==7 && r>0 && r<7) d.classList.add('green'); if(c==7 && r>7 && r<14) d.classList.add('blue');
-                const safe = [[6,2],[2,8],[8,12],[12,6]]; safe.forEach(s=>{if(r==s[0]&&c==s[1])d.classList.add('safe')});
-                b.appendChild(d);
-            }
-            const addP=(r,c,cl)=>{const p=document.createElement('div'); p.className=`piece p-${cl}`; document.getElementById(`c-${r}-${c}`).appendChild(p);};
-            addP(1,1,'green'); addP(1,4,'green'); addP(4,1,'green'); addP(4,4,'green'); addP(1,10,'yellow'); addP(1,13,'yellow'); addP(4,10,'yellow'); addP(4,13,'yellow');
-            addP(10,1,'red'); addP(10,4,'red'); addP(13,1,'red'); addP(13,4,'red'); addP(10,10,'blue'); addP(10,13,'blue'); addP(13,10,'blue'); addP(13,13,'blue');
-        }
-
-        function roll() { socket.emit("rollDice", { roomId: "global", value: Math.floor(Math.random()*6)+1, player: userId }); }
-        function showTab(id){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active-tab')); document.getElementById(id).classList.add('active-tab'); if(id==='lobby-tab') loadLobby(); }
-        function copyBk() { navigator.clipboard.writeText(document.getElementById('d-bk').innerText); alert("Copied!"); }
-        
-        window.onload = init;
-    </script>
-
-    <div class="bg-blue-600 text-white p-4 flex justify-between shadow sticky top-0 z-50">
-        <div><h1 class="font-bold text-sm uppercase italic">Ludo Royal</h1><p id="uid" class="text-[8px] bg-blue-800 px-2 rounded-full font-mono mt-0.5 tracking-widest uppercase">...</p></div>
-        <p class="font-black text-lg text-yellow-300">৳ <span id="balance">0</span></p>
-    </div>
-
-    <div id="game-tab" class="tab-content active-tab p-2 text-center">
-        <div id="board" class="mt-4 shadow-xl border-white border-2"></div>
-        <div class="mt-8 flex justify-around items-center bg-white p-4 rounded-3xl shadow mx-4 border">
-            <button onclick="roll()" id="dice-btn" class="w-16 h-16 bg-white rounded-2xl shadow-xl border-b-4 border-gray-300 text-4xl flex items-center justify-center transition-all">🎲</button>
-            <div id="status-msg" class="text-[10px] font-bold text-blue-600 uppercase">Connecting...</div>
-        </div>
-    </div>
-
-    <div id="lobby-tab" class="tab-content p-4"><div id="match-list" class="space-y-4"></div></div>
-
-    <div id="wallet-tab" class="tab-content p-4 space-y-5 text-center">
-        <div class="bg-gradient-to-br from-yellow-400 to-orange-500 p-6 rounded-[35px] text-white shadow-xl italic font-black uppercase">
-            <h3>🎁 Refer & Earn</h3>
-            <p id="my-ref" class="text-2xl tracking-widest mt-2 bg-black/20 p-2 rounded-xl">...</p>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-            <div class="bg-white p-4 rounded-3xl shadow border-t-8 border-pink-500 flex flex-col items-center">
-                <h3 class="text-[10px] font-bold text-pink-500 uppercase mb-2">Deposit</h3>
-                <input type="number" id="amt" placeholder="৳ Amount" class="w-full border p-2 rounded-xl mb-2 text-xs outline-none">
-                <input type="text" id="trx" placeholder="TrxID" class="w-full border p-2 rounded-xl mb-2 text-xs outline-none">
-                <button onclick="dep()" class="w-full bg-pink-600 text-white py-2 rounded-xl font-bold text-[10px]">SUBMIT</button>
-            </div>
-            <div class="bg-white p-4 rounded-3xl shadow border-t-8 border-blue-500 flex flex-col items-center">
-                <h3 class="text-[10px] font-bold text-blue-500 uppercase mb-2">Withdraw</h3>
-                <input type="number" id="wamt" placeholder="৳ Amount" class="w-full border p-2 rounded-xl mb-2 text-xs outline-none">
-                <input type="text" id="wphone" placeholder="bKash" class="w-full border p-2 rounded-xl mb-2 text-xs outline-none">
-                <button onclick="wit()" class="w-full bg-blue-600 text-white py-2 rounded-xl font-bold text-[10px]">REQUEST</button>
-            </div>
-        </div>
-        <div class="bg-white p-4 rounded-3xl shadow text-center cursor-pointer" onclick="copyBk()">
-            <p class="text-[9px] text-gray-400 font-bold uppercase">Personal bKash (Tap to Copy)</p>
-            <p id="d-bk" class="font-black text-xl text-pink-700 tracking-tighter italic">Loading...</p>
-        </div>
-        <a href="#" id="wa" target="_blank" class="block bg-green-500 text-white p-4 rounded-2xl text-center font-bold shadow shadow-green-100 uppercase text-xs">WhatsApp Help</a>
-    </div>
-
-    <div class="fixed bottom-0 w-full bg-white border-t flex justify-around p-4 shadow-xl z-50">
-        <button onclick="showTab('game-tab')" class="font-bold text-[10px]">PLAY</button>
-        <button onclick="showTab('lobby-tab')" class="font-bold text-[10px]">LOBBY</button>
-        <button onclick="showTab('wallet-tab')" class="font-bold text-[10px]">WALLET</button>
-    </div>
+// ====== Next Turn ======
+function nextTurn(){
+  turn=(turn+1)%4;
+  turnText.innerText=players[turn].charAt(0).toUpperCase()+players[turn].slice(1);
+}
+</script>
 </body>
 </html>
