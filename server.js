@@ -1,1 +1,48 @@
-javascript const express = require("express"); const http = require("http"); const { Server } = require("socket.io"); const { MongoClient, ObjectId } = require("mongodb"); const cors = require("cors");  const app = express(); app.use(cors()); app.use(express.json());  const server = http.createServer(app); const io = new Server(server, { cors: { origin: "*" } });  const uri = process.env.MONGODB_URI; const client = new MongoClient(uri);  async function run() {     try {         await client.connect();         const db = client.db("ludocash");         const users = db.collection("users");         const settings = db.collection("settings");         const transactions = db.collection("transactions");         const matches = db.collection("matches");          // --- টুর্নামেন্ট অটো-মনিটর (Bangladesh Time) ---         setInterval(async () => {             const now = new Date();             const bdTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Dhaka"}));             const format = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase().replace(/\./g, '');             const currentTime = format(bdTime);             const oneMinLater = format(new Date(bdTime.getTime() + 60000));              // ১ মিনিট আগের নোটিশ             const upcoming = await matches.find({ status: "open", startTime: oneMinLater }).toArray();             upcoming.forEach(m => io.to(m._id.toString()).emit("oneMinWarning", { msg: "আপনার ম্যাচ ১ মিনিট পর শুরু হবে!" }));              // গেম স্টার্ট লজিক             const toStart = await matches.find({ status: "open", startTime: currentTime }).toArray();             for (let m of toStart) {                 if (m.players.length >= 2) {                     await matches.updateOne({ _id: m._id }, { $set: { status: "playing" } });                     io.to(m._id.toString()).emit("gameStartNow", { matchId: m._id.toString(), roomCode: m.roomCode, prize: m.prize, currentTurn: m.players[0] });                 } else {                     await matches.updateOne({ _id: m._id }, { $set: { status: "expired" } });                 }             }         }, 15000);          // APIs         app.get("/api/settings", async (req, res) => res.json(await settings.findOne({ id: "config" }) || { bikash: "017XXXXXXXX", wa: "8801700000000", referBonus: 10 }));         app.post("/api/updateSettings", async (req, res) => { await settings.updateOne({ id: "config" }, { $set: req.body }, { upsert: true }); res.json({ success: true }); });         app.get("/api/balance", async (req, res) => { const u = await users.findOne({ userId: req.query.userId }); res.json({ balance: u ? u.balance : 0 }); });                  app.post("/api/deposit", async (req, res) => { await transactions.insertOne({ ...req.body, status: "pending", type: "deposit", date: new Date() }); res.json({ success: true }); });         app.post("/api/withdraw", async (req, res) => {             const { userId, amount, phone } = req.body;             const user = await users.findOne({ userId });             if (!user || user.balance < amount) return res.status(400).json({ error: "Balance Low" });             await users.updateOne({ userId }, { $inc: { balance: -parseInt(amount) } });             await transactions.insertOne({ userId, amount, phone, status: "pending", type: "withdraw", date: new Date() });             res.json({ success: true });         });          app.get("/api/getMatches", async (req, res) => res.json(await matches.find({ status: "open" }).toArray()));         app.post("/api/createMatch", async (req, res) => { await matches.insertOne({ ...req.body, players: [], status: "open", date: new Date() }); res.json({ success: true }); });         app.post("/api/joinMatch", async (req, res) => {             const { matchId, userId } = req.body;             const match = await matches.findOne({ _id: new ObjectId(matchId) });             const user = await users.findOne({ userId });             if (user.balance < match.entryFee) return res.status(400).json({ error: "Balance Low" });             await users.updateOne({ userId }, { $inc: { balance: -parseInt(match.entryFee) } });             await matches.updateOne({ _id: new ObjectId(matchId) }, { $addToSet: { players: userId } });             res.json({ success: true });         });          app.get("/api/admin/requests", async (req, res) => res.json(await transactions.find({ status: "pending" }).toArray()));         app.get("/api/admin/users", async (req, res) => {             const all = await users.find().toArray();             const list = await Promise.all(all.map(async (u) => {                 const rCount = await users.countDocuments({ referredBy: u.userId });                 return { userId: u.userId, balance: u.balance, referCount: rCount };             }));             res.json(list);         });         app.post("/api/admin/handleRequest", async (req, res) => {             const { id, action } = req.body;             const r = await transactions.findOne({ _id: new ObjectId(id) });             if (action === "approve") {                 await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "approved" } });                 if (r.type === "deposit") await users.updateOne({ userId: r.userId }, { $inc: { balance: parseInt(r.amount) } }, { upsert: true });             } else {                 await transactions.updateOne({ _id: new ObjectId(id) }, { $set: { status: "rejected" } });                 if (r.type === "withdraw") await users.updateOne({ userId: r.userId }, { $inc: { balance: parseInt(r.amount) } });             }             res.json({ success: true });         });         app.post("/api/admin/deleteMatch", async (req, res) => { await matches.deleteOne({ _id: new ObjectId(req.body.id) }); res.json({ success: true }); });          io.on("connection", (socket) => {             socket.on("joinRoom", (id) => socket.join(id));             socket.on("rollDice", (d) => io.to(d.roomId).emit("diceRolled", d));             socket.on("movePiece", (d) => io.to(d.roomId).emit("pieceMoved", d));         });          server.listen(process.env.PORT || 3000);     } catch (e) { console.error(e); } } run();
+const board = document.getElementById("board");
+
+function createBoard(){
+  board.innerHTML = "";
+  for(let i=0;i<225;i++){
+    let r=Math.floor(i/15);
+    let c=i%15;
+    let d=document.createElement("div");
+    d.className="cell";
+
+    if(r<6&&c<6)d.classList.add("green");
+    else if(r<6&&c>8)d.classList.add("yellow");
+    else if(r>8&&c<6)d.classList.add("red");
+    else if(r>8&&c>8)d.classList.add("blue");
+
+    if(r==7&&c>0&&c<7)d.classList.add("red");
+    if(r==7&&c>7&&c<14)d.classList.add("yellow");
+    if(c==7&&r>0&&r<7)d.classList.add("green");
+    if(c==7&&r>7&&r<14)d.classList.add("blue");
+
+    [[6,2],[2,8],[8,12],[12,6]].forEach(s=>{
+      if(r==s[0]&&c==s[1])d.classList.add("safe");
+    });
+
+    d.id=`c-${r}-${c}`;
+    board.appendChild(d);
+  }
+
+  addPiece(1,1,"green"); addPiece(1,4,"green");
+  addPiece(4,1,"green"); addPiece(4,4,"green");
+
+  addPiece(1,10,"yellow"); addPiece(1,13,"yellow");
+  addPiece(4,10,"yellow"); addPiece(4,13,"yellow");
+
+  addPiece(10,1,"red"); addPiece(10,4,"red");
+  addPiece(13,1,"red"); addPiece(13,4,"red");
+
+  addPiece(10,10,"blue"); addPiece(10,13,"blue");
+  addPiece(13,10,"blue"); addPiece(13,13,"blue");
+}
+
+function addPiece(r,c,color){
+  const p=document.createElement("div");
+  p.className=`piece p-${color}`;
+  document.getElementById(`c-${r}-${c}`).appendChild(p);
+}
+
+createBoard();
